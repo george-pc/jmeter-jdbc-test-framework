@@ -1,0 +1,20 @@
+# Set Test metadata for this test run - This is optional and used only to store reports
+ALIAS="benchmark"
+ENGINE="e6data"
+CLOUD="AWS"
+MODE="test"
+TAGS="performance,regression"
+COMMENTS="Initial test run"
+CLUSTER_CONFIG='{"nodes": 4, "instance_type": "m5.2xlarge"}'
+AUTOSCALE="on"
+DATA_TYPE="TPCDS"
+ADDITIONAL_INFO="No"
+COPY_TO_S3=false  # Set to false to skip S3 copy
+S3_PATH="<your s3 path>"
+
+# Default files - Change this for default in the interactive script
+DEFAULT_TEST_PLAN="Test-Plan-Maintain-static-concurrency.jmx"
+DEFAULT_TEST_PROPERTIES="sample_test.properties"
+DEFAULT_CONNECTION_PROPERTIES="sample_connection.properties"
+DEFAULT_QUERIES="sample_jmeter_queries.csv"
+DEFAULT_METADATA="sample_metadata.txt"
