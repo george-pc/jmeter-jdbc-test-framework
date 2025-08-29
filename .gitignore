@@ -14,7 +14,7 @@ apache-jmeter-5.6.3/backups
 reports
 
 #ignore data files - As it might have sensitive info
-data_files/*.csv
+#data_files/*.csv
 
 #ignore connection properties as it might have sensitive info
 connection_properties/*.properties
