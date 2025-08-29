@@ -58,22 +58,22 @@ sudo dnf install -y jq
 jq --version
 ```
 
-## Running Tests using standard jmeter CLI command.
+# Running Tests using standard jmeter CLI command.
 ```bash
 $JMETER_BIN/jmeter -n -t "$TEST_PLAN" -l "$REPORT_PATH/results.jtl" -q "$TEST_PROPERTIES" -q "$CONNECTION_PROPERTIES" -JQUERY_PATH=$QUERIES_FILE
 ```
 
-# Example - Run Jmeter in GUI mode:
+## Example - Run Jmeter in GUI mode:
 ```bash
 ./apache-jmeter-5.6.3/bin/jmeter -t Test-Plans/Test-Plan-Maintain-static-concurrency.jmx -q connection_properties/sample_connection.properties -q test_properties/sample_test.properties
 ```
-# Example - Run Jmeter in Non GUI mode:
+## Example - Run Jmeter in Non GUI mode:
 ```bash
 ./apache-jmeter-5.6.3/bin/jmeter -n -t Test-Plans/Test-Plan-Maintain-static-concurrency.jmx -q connection_properties/sample_connection.properties  -q test_properties/sample_test.properties
 ```
 
 
-## Running Tests interactively using the wrapper script
+# Running Tests interactively using the wrapper script
 Execute the interactive test runner:
 ```bash
 ./run_jmeter_tests_interactive.sh
@@ -84,18 +84,37 @@ Execute the interactive test runner:
 ```
 .
 ├── README.md
-├── e6_connection.properties
-├── e6_test.properties
-├── run_jmeter_tests_interactive.sh
-└── test_plans/
+├── apache-jmeter-5.6.3
+├── connection.properties
+    └── [Connection properties file *.properties]
+    └── [sample_connection.properties ]
+├── data_files
+    └── [CSV Queries file *.csv]
+    └── [sample_queries.csv ]
+├── metadata_files - optional
+    └── [sample_metadata.txt - Optional required only to copy data to s3 or storage for keeping track of runs ]
+├── test.properties
+    └── [Test properties file *.properties]
+    └── [sample_test.properties ]
+├── Scripts
+    ├── run_jmeter_tests_interactive.sh
+└── Test-Plans
     └── [JMX test files]
+    └── [Test-Plan-Constant-QPM-On-Arrivals.jmx - To fire queries per minute using QPM in test.properties]
+    └── [Test-Plan-Constant-QPS-On-Arrivals.jmx - To fire queries per sec using QPs in test.properties]
+    └── [Test-Plan-Fire-QPM-with-load-profile.jmx - To fire queries per minute using load profile file in test.properties]
+    └── [Test-Plan-Fire-QPS-with-load-profile.jmx - To fire queries per minute using load profile file in test.properties]
+    └── [Test-Plan-Maintain-static-concurrency.jmx - To maintain fixed load / concurrency using concurrency in test.properties]
+    └── [Test-Plan-Maintain-variable-concurrency-with-load-profile.jmx - To maintain load/concurrency using load profile file in test.properties]
+
+
 ```
 
 ## Property Files
 
 Sample configurations:
 
-**e6_connection.properties:**
+**sample_e6_connection.properties:**
 ```
 # JDBC Jmeter connection properties
 
@@ -116,7 +135,7 @@ DRIVER_CLASS=io.e6.jdbc.driver.E6Driver
 
 ```
 
-**e6_test.properties:**
+**sample_e6_test.properties:**
 ```
 # E6 Jmeter Test properties
 
@@ -161,10 +180,11 @@ QUERY_PATH=../data_files/Benchmark_TPCDS-51-queries_without_bootstrap.csv
 ## Important Note
 
 DO NOT PUT YOUR SENSITIVE LOGIN/CREDENTIALS OR ANY SUCH SENSITIVE INFO NEITHER IN PROPERTIES/JMETER TEST PLAN OR ANY SUCH FILE.
+CHECK THE .gitignore file as we avoid some sensitive info to be checked in.
 
 ## DISCLAIMER
-This is just a sample collection that can be used for jmeter testing, so please check the parameters and use properly as improper setting can overload/damage the system
-
+This is just a sample collection that can be used for jmeter testing, so please check the parameters and use proper reasonable values as improper setting can overload/damage the system
+Do not test directly on some production system without verification as the system can be overloaded if proper values are not set.
 
 
 ## STEPS TO RUN USING WRAPPER SCRIPT - OPTIONAL
@@ -195,7 +215,7 @@ git clone https://github.com/george-pc/jmeter-jdbc-test-plans.git
 cd jmeter-jdbc-test-plans/
 ```
 
-# create a reports directory
+# create a reports directory if not exists
 ```
 mkdir reports
 ```
