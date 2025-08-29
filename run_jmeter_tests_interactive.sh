@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 #Set the JAVA_HOME and JAVA version 17 because that is needed for the JSR script in Jmeter
-export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+#export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 
 # Basic configuration
 JMETER_HOME=$(pwd)
