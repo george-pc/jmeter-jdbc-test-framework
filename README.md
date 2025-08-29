@@ -65,11 +65,11 @@ $JMETER_BIN/jmeter -n -t "$TEST_PLAN" -l "$REPORT_PATH/results.jtl" -q "$TEST_PR
 
 # Example - Run Jmeter in GUI mode:
 ```bash
-./apache-jmeter-5.6.3/bin/jmeter -t Test-Plans/Test-Plan-Maintain-concurrency-static.jmx -q connection_properties/sample_connection.properties -q test_properties/sample_test.properties
+./apache-jmeter-5.6.3/bin/jmeter -t Test-Plans/Test-Plan-Maintain-static-concurrency.jmx -q connection_properties/sample_connection.properties -q test_properties/sample_test.properties
 ```
 # Example - Run Jmeter in Non GUI mode:
 ```bash
-./apache-jmeter-5.6.3/bin/jmeter -n -t Test-Plans/Test-Plan-Maintain-concurrency-static.jmx -q connection_properties/george_connection.properties -q test_properties/sample_test.properties
+./apache-jmeter-5.6.3/bin/jmeter -n -t Test-Plans/Test-Plan-Maintain-static-concurrency.jmx -q connection_properties/sample_connection.properties  -q test_properties/sample_test.properties
 ```
 
 
