@@ -1,8 +1,14 @@
+# JMeter JDBC Test Framework
 
-# JMeter JDBC Query Performance Test Plans and wrapper scripts
+A lightweight framework to run **JMeter JDBC test plans** with wrapper scripts for easy setup, automation, and database performance testing
+This repository contains JMeter test plans for evaluating query performance.
+The Jmeter JDBC Test plans can run tests against multiple databases that support JDBC connection like E6Data, Databricks etc. 
+The connection and test parameters are defined in connection and test properties file, thereby making this framework flexible and robust to run Jmeter tests against multiple systems.
+The queries are read from a csv file, making this framework flexible to run queries from a csv file, against a DB using connection_properties file and test parameter from per test_properties file.
+You just need to create your connection_properties file in connection_properties folder and test_properties file in test_properties as *.properties file and the queries in the data_files folder as csv
+There are also some wrapper scripts that can run the Jmeter tests by taking user inputs interactively from above folders in command prompt.
 
-This repository contains JMeter test plans for evaluating query performance, developed by E6Data.
-This repo also has some wrapper scripts that can run the Jmeter tests by taking user inputs interactively from command prompt.
+
 
 ## Prerequisites
 
