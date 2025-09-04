@@ -30,13 +30,6 @@ Framework to run **JMeter JDBC test plans** for database load and performance te
 
 ### Java 17 should be installed
 
-## Test properties files
-
-The test plans are created to run in different environments using property files as below :
-- `connection.properties` - Manages JDBC database connection parameters
-- `test.properties` - Controls test behavior settings
-
-
 #### Steps to install java - Option 1 using package manager
 
 **Amazon Linux 2:**
@@ -58,7 +51,7 @@ tar -xvf openjdk-17.0.2_linux-x64_bin.tar.gz
 sudo mv jdk-17.0.2 /usr/local/
 ```
 
-#### Verification of java version:
+#### Set the JAVA_HOME:
 ```bash
 java -version
 export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto.aarch64
@@ -80,7 +73,48 @@ sudo dnf install -y jq
 jq --version
 ```
 
+### Install git - If not installed
+```
+sudo yum install git
+```
+
+### Clone the repo
+```
+git clone https://github.com/george-pc/jmeter-jdbc-test-plans.git
+```
+
+### change to the cloned directory
+```
+cd jmeter-jdbc-test-plans/
+```
+
+### create a reports directory if not exists
+```
+mkdir reports
+```
+
 # Running Tests using standard jmeter CLI command.
+### Create the connection properties files with the required connection using the template/sample properties file
+
+```bash
+cd connection_properties
+cp sample_connection.properties <YOUR_DB_SERVER>_connection.properties
+```
+
+### Create the test properties files with the test parameters using the template/sample properties file
+```bash
+cd test_properties
+cp sample_test.properties <YOUR_TEST>_test.properties```
+```
+
+### Create/copy the queries to the data_files folder as a .csv file
+```bash
+cd data_files
+cp <YOUR_TEST_QUERIES>.csv data_files
+```
+
+## Run Tests using standard jmeter CLI command.
+Once the properties file are created, we can run the prebuilt test plan using above created files as input to run the test against your taget system
 ```bash
 $JMETER_BIN/jmeter -n -t "$TEST_PLAN" -l "$REPORT_PATH/results.jtl" -q "$TEST_PROPERTIES" -q "$CONNECTION_PROPERTIES" -JQUERY_PATH=$QUERIES_FILE
 ```
@@ -132,7 +166,7 @@ Execute the interactive test runner:
 
 ```
 
-## Property Files
+## Property Files Format
 
 Sample configurations:
 
@@ -201,68 +235,10 @@ QUERY_PATH=../data_files/Benchmark_TPCDS-51-queries_without_bootstrap.csv
 
 ## Important Note
 
-DO NOT PUT YOUR SENSITIVE LOGIN/CREDENTIALS OR ANY SUCH SENSITIVE INFO NEITHER IN PROPERTIES/JMETER TEST PLAN OR ANY SUCH FILE.
-CHECK THE .gitignore file as we avoid some sensitive info to be checked in.
+- DO NOT PUT YOUR SENSITIVE LOGIN/CREDENTIALS OR ANY SUCH SENSITIVE INFO NEITHER IN PROPERTIES/JMETER TEST PLAN OR ANY SUCH FILE.
+- CHECK THE .gitignore file as we avoid some sensitive info to be checked in.
 
 ## DISCLAIMER
-This is just a sample collection that can be used for jmeter testing, so please check the parameters and use proper reasonable values as improper setting can overload/damage the system
-Do not test directly on some production system without verification as the system can be overloaded if proper values are not set.
+- This is just a sample collection that can be used for jmeter testing, so please check the parameters and use proper reasonable values as improper setting can overload/damage the system
+- Do not test directly on some production system without verification as the system can be overloaded if proper values are not set.
 
-
-## STEPS TO RUN USING WRAPPER SCRIPT - OPTIONAL
-# Install Java 17 - If not installed
-```
-sudo yum install java-17-amazon-corretto -y
-java -version
-echo 'export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto' >> ~/.bashrc
-echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc
-source ~/.bashrc
-echo $JAVA_HOME
-ls -l $JAVA_HOME
-java -version
-```
-
-# Install git - If not installed
-```
-sudo yum install git
-```
-
-# Clone the repo
-```
-git clone https://github.com/george-pc/jmeter-jdbc-test-plans.git
-```
-
-# change to the cloned directory
-```
-cd jmeter-jdbc-test-plans/
-```
-
-# create a reports directory if not exists
-```
-mkdir reports
-```
-
-# verify the contents
-ls -lrt
-
-# Create/Update the connection details in the connection.properties file
-```
-cd connection_properties
-cp connection.properties.template YOUR_CONNECTION_PROPERTIES_FILENAME.properties
-cd ..
-```
-
-Use vi or any editor to open above created file and enter the connection details, Jmeter test will use this to connect to the target server
-
-# Create/Update the test configuration details and paths in the test.properties file 
-```
-cd test_properties/
-cp test.properties.template YOUR_TEST_PROPERTIES_FILENAME.properties
-cd ..
-```
-Use vi or any editor to open above created file  and enter the details
-
-# Run the interactive wrapper script to launch the jmeter run and enter the  values from the prompt
-```
-./run_jmeter_tests_interactive.sh
-```
