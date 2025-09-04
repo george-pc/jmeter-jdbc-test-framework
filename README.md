@@ -1,14 +1,30 @@
 # JMeter JDBC Test Framework
 
-A lightweight framework to run **JMeter JDBC test plans** with wrapper scripts for easy setup, automation, and database performance testing
-This repository contains JMeter test plans for evaluating query performance.
-The Jmeter JDBC Test plans can run tests against multiple databases that support JDBC connection like E6Data, Databricks etc. 
-The connection and test parameters are defined in connection and test properties file, thereby making this framework flexible and robust to run Jmeter tests against multiple systems.
-The queries are read from a csv file, making this framework flexible to run queries from a csv file, against a DB using connection_properties file and test parameter from per test_properties file.
-You just need to create your connection_properties file in connection_properties folder and test_properties file in test_properties as *.properties file and the queries in the data_files folder as csv
-There are also some wrapper scripts that can run the Jmeter tests by taking user inputs interactively from above folders in command prompt.
+Framework to run **JMeter JDBC test plans** for database load and performance testing.
 
+## 🔹 Key Features
+- **Pre-configured JMeter test plans** that use `.properties` files to make test execution simple, reusable, and automation-friendly.  
+  - Connection parameters are defined in a `connection_properties` file inside the `connection_properties/` folder  
+  - Test parameters are defined in a `test_properties` file inside the `test_properties/` folder  
+  - Queries are stored in a `.csv` file inside the `data_files/` folder  
 
+- **Flexible query execution**:  
+  Queries are read from a CSV file, making this framework flexible to run queries against a database using:  
+  - Connection settings from the `connection_properties` file  
+  - Test parameters from the `test_properties` file  
+  - Queries from the `data_files` CSV  
+
+- **Simple setup**:  
+  You only need to:  
+  1. Create a `connection_properties` file in the `connection_properties/` folder  
+  2. Create a `test_properties` file in the `test_properties/` folder  
+  3. Add your queries as a `.csv` file in the `data_files/` folder  
+
+- **Multi-database support**:  
+  The JMeter JDBC test plans can run against multiple databases that support JDBC connections (e.g., **E6Data, Databricks, etc.**) using the appropriate `.properties` file.  
+
+- **Wrapper scripts**:  
+  Includes helper scripts that can run the JMeter tests by taking user inputs interactively from the above folders through the command prompt.  
 
 ## Prerequisites
 
