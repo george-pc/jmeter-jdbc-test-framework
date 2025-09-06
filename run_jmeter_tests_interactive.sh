@@ -31,9 +31,9 @@ show_files() {
     local title="$3"
     
     echo ""
-    echo "==========================================================="
-    echo "$title - Please select from below :"
-    echo "==========================================================="
+    echo "========================================================================================="
+    echo "$title - Please select from below - Just press Enter if no change to Default in Bracket:"
+    echo "========================================================================================="
     echo "Directory: $path"
     echo ""
     find "$path" -maxdepth 1 -type f -name "$pattern" -exec basename {} \; | sort
@@ -157,6 +157,36 @@ echo "Connection Properties: $CONNECTION_PROPERTIES"
 echo "JDBC_URL = $JDBC_URL"
 echo "CLUSTER_HOSTNAME = $CLUSTER_HOSTNAME"
 echo "Results will be saved to: $REPORT_PATH"
+
+# Check if this is a load profile based test plan and update it
+if [[ "$TEST_PLAN" == *"load-profile"* ]] || [[ "$TEST_PLAN" == *"load_profile"* ]]; then
+  # Check if LOAD_PROFILE property exists in test properties
+  if grep -q "LOAD_PROFILE=" "$TEST_PROPERTIES" 2>/dev/null; then
+    LOAD_PROFILE_PATH=$(grep "^LOAD_PROFILE=" "$TEST_PROPERTIES" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+    
+    if [[ -n "$LOAD_PROFILE_PATH" ]] && [[ -f "$LOAD_PROFILE_PATH" ]]; then
+      echo ""
+      echo "📊 Detected load profile based test plan"
+      echo "📂 Load profile: $LOAD_PROFILE_PATH"
+      
+      # Check if update script exists
+      UPDATE_SCRIPT="$(dirname "$0")/update_load_profile.sh"
+      if [[ -f "$UPDATE_SCRIPT" ]]; then
+        echo "🔄 Updating test plan with load profile..."
+        "$UPDATE_SCRIPT" "$LOAD_PROFILE_PATH" "$TEST_PLAN"
+        
+        if [[ $? -eq 0 ]]; then
+          echo "✅ Test plan updated with load profile"
+        else
+          echo "⚠️  Warning: Failed to update test plan with load profile"
+        fi
+      else
+        echo "⚠️  Warning: update_load_profile.sh not found, using static schedule in test plan"
+      fi
+      echo ""
+    fi
+  fi
+fi
 
 # Check if required files exist
 for file in "$TEST_PLAN" "$TEST_PROPERTIES" "$CONNECTION_PROPERTIES"; do
@@ -315,13 +345,17 @@ total_queries=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ {count++} END {print 
 total_success=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {count++} END {print count}' "$AGGREGATE_REPORT")
 total_failed=$((total_queries - total_success))
 total_time_taken=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ {sum+=$2/1000} END {print sum}' "$AGGREGATE_REPORT")
-min_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | head -1 | awk '{printf "%.2f", $1/1000}')
-max_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | tail -1 | awk '{printf "%.2f", $1/1000}')
-avg_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {count++; sum+=$2} END {if (count>0) printf "%.2f", (sum/count)/1000}' "$AGGREGATE_REPORT")
-median_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | awk 'NF{a[i++]=$1} END{printf "%.2f", (i%2==1?a[int(i/2)]:(a[i/2-1]+a[i/2])/2)/1000}')
+min_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | head -1 | awk '{printf "%.2f", $1/1000}' 2>/dev/null)
+max_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | tail -1 | awk '{printf "%.2f", $1/1000}' 2>/dev/null)
+avg_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {count++; sum+=$2} END {if (count>0) printf "%.2f", (sum/count)/1000; else print "0.00"}' "$AGGREGATE_REPORT")
+median_time=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {print $2}' "$AGGREGATE_REPORT" | sort -n | awk 'NF{a[i++]=$1} END{if(i>0) printf "%.2f", (i%2==1?a[int(i/2)]:(a[i/2-1]+a[i/2])/2)/1000; else print "0.00"}')
 unique_queries=$(awk -F',' 'NR>1 {gsub(/^"|"$/, "", $3); if ($3 !~ /(BOOTSTRAP|JSR)/) seen[$3]++} END {print length(seen)}' "$AGGREGATE_REPORT")
 error_percent=$(awk "BEGIN {printf \"%.2f\", ($total_failed/$total_queries) * 100}")
-throughput=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {count++; sum+=$2} END {if (sum>0) printf "%.2f", (count/(sum/1000))}' "$AGGREGATE_REPORT")
+throughput=$(awk -F',' 'NR>1 && $3 !~ /(BOOTSTRAP|JSR)/ && $4==200 {count++; sum+=$2} END {if (sum>0) printf "%.2f", (count/(sum/1000)); else print "0.00"}' "$AGGREGATE_REPORT")
+
+# Ensure variables have valid values for JSON
+min_time=${min_time:-"0.00"}
+max_time=${max_time:-"0.00"}
 p50_latency=$median_time
 
 # Calculate percentiles (p90, p95, p99)

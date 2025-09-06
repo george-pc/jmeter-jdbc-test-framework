@@ -123,7 +123,6 @@
           </elementProp>
         </collectionProp>
       </elementProp>
-      <boolProp name="TestPlan.functional_mode">false</boolProp>
     </TestPlan>
     <hashTree>
       <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report">
@@ -392,20 +391,25 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
         <elementProp name="ThreadGroup.main_controller" elementType="com.blazemeter.jmeter.control.VirtualUserController"/>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <collectionProp name="Schedule">
-          <collectionProp name="140466207">
-            <stringProp name="48">0</stringProp>
-            <stringProp name="52">4</stringProp>
-            <stringProp name="1722">60</stringProp>
+          <collectionProp name="1827557171">
+            <stringProp name="48">4</stringProp>
+            <stringProp name="49">4</stringProp>
+            <stringProp name="50">30</stringProp>
           </collectionProp>
-          <collectionProp name="-241987821">
-            <stringProp name="1567">10</stringProp>
-            <stringProp name="1573">16</stringProp>
-            <stringProp name="1567">10</stringProp>
+          <collectionProp name="1797785323">
+            <stringProp name="48">16</stringProp>
+            <stringProp name="49">16</stringProp>
+            <stringProp name="50">60</stringProp>
           </collectionProp>
-          <collectionProp name="1873354706">
-            <stringProp name="49">1</stringProp>
-            <stringProp name="1567">10</stringProp>
-            <stringProp name="1722">60</stringProp>
+          <collectionProp name="2961429892">
+            <stringProp name="48">4</stringProp>
+            <stringProp name="49">4</stringProp>
+            <stringProp name="50">20</stringProp>
+          </collectionProp>
+          <collectionProp name="2127795347">
+            <stringProp name="48">12</stringProp>
+            <stringProp name="49">12</stringProp>
+            <stringProp name="50">40</stringProp>
           </collectionProp>
         </collectionProp>
         <stringProp name="LogFilename"></stringProp>
@@ -415,7 +419,7 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
         <stringProp name="Unit">S</stringProp>
       </com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup>
       <hashTree>
-        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor to create load from the load Profile file" enabled="true">
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor to create load from the load Profile file" enabled="false">
           <stringProp name="cacheKey">false</stringProp>
           <stringProp name="filename"></stringProp>
           <stringProp name="parameters"></stringProp>
@@ -498,8 +502,57 @@ for (int row = 0; row &lt; model.getRowCount(); row++) {
 // 🚀 Apply to FreeFormArrivalsThreadGroup
 def threadGroup = ctx.getThreadGroup()
 if (threadGroup instanceof FreeFormArrivalsThreadGroup) {
-    threadGroup.setData(model)
-    log.info(&quot;✅ Load profile successfully assigned to FreeFormArrivalsThreadGroup!&quot;)
+    // 🔍 DEBUG: Log current thread group data before setData
+    try {
+        def currentData = threadGroup.getData()
+        log.info(&quot;🔍 DEBUG: Thread group data BEFORE setData - row count: &quot; + (currentData?.getRowCount() ?: &quot;null&quot;))
+        if (currentData != null) {
+            for (int i = 0; i &lt; currentData.getRowCount(); i++) {
+                log.info(&quot;🔍 DEBUG: BEFORE row $i: Start=${currentData.getValueAt(i, 0)}, End=${currentData.getValueAt(i, 1)}, Duration=${currentData.getValueAt(i, 2)}&quot;)
+            }
+        }
+    } catch (Exception e) {
+        log.info(&quot;🔍 DEBUG: Could not read current thread group data: &quot; + e.getMessage())
+    }
+    
+    // 🔍 DEBUG: Log the model we&apos;re about to set
+    log.info(&quot;🔍 DEBUG: Model data TO BE SET - row count: &quot; + model.getRowCount())
+    for (int i = 0; i &lt; model.getRowCount(); i++) {
+        log.info(&quot;🔍 DEBUG: TO SET row $i: Start=${model.getValueAt(i, 0)}, End=${model.getValueAt(i, 1)}, Duration=${model.getValueAt(i, 2)}&quot;)
+    }
+    
+    // 🚀 New approach: Remove Schedule property completely then rebuild
+    try {
+        // Force clear and recreate the Schedule property completely
+        threadGroup.removeProperty(&quot;Schedule&quot;)
+        log.info(&quot;🗑️ Removed Schedule property completely&quot;)
+        
+        // Set the new data which should create a fresh Schedule property
+        threadGroup.setData(model)
+        log.info(&quot;✅ setData() called after property removal&quot;)
+        
+        // Verify the new schedule
+        def newSchedule = threadGroup.getProperty(&quot;Schedule&quot;)
+        log.info(&quot;🔍 New schedule property: ${newSchedule?.getClass()}&quot;)
+        log.info(&quot;🔍 New schedule size: ${newSchedule?.size()}&quot;)
+        
+    } catch (Exception e) {
+        log.error(&quot;❌ New approach failed: &quot; + e.getMessage())
+        e.printStackTrace()
+    }
+    
+    // 🔍 DEBUG: Verify what the thread group data looks like after setData
+    try {
+        def verifyData = threadGroup.getData()
+        log.info(&quot;🔍 DEBUG: Thread group data AFTER setData - row count: &quot; + (verifyData?.getRowCount() ?: &quot;null&quot;))
+        if (verifyData != null) {
+            for (int i = 0; i &lt; verifyData.getRowCount(); i++) {
+                log.info(&quot;🔍 DEBUG: AFTER row $i: Start=${verifyData.getValueAt(i, 0)}, End=${verifyData.getValueAt(i, 1)}, Duration=${verifyData.getValueAt(i, 2)}&quot;)
+            }
+        }
+    } catch (Exception e) {
+        log.info(&quot;🔍 DEBUG: Could not verify thread group data after setData: &quot; + e.getMessage())
+    }
 } else {
     log.error(&quot;❌ Thread group is not an instance of FreeFormArrivalsThreadGroup! Load profile NOT applied.&quot;)
 }
@@ -562,7 +615,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         </JDBCSampler>
         <hashTree/>
       </hashTree>
-      <PostThreadGroup guiclass="PostThreadGroupGui" testclass="PostThreadGroup" testname="tearDown Thread Group">
+      <PostThreadGroup guiclass="PostThreadGroupGui" testclass="PostThreadGroup" testname="tearDown Thread Group" enabled="true">
         <intProp name="ThreadGroup.num_threads">1</intProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
