@@ -1,7 +1,26 @@
 #!/usr/bin/env bash
 
-#Set the JAVA_HOME and JAVA version 17 because that is needed for the JSR script in Jmeter
-#export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+# Check Java version
+java_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
+
+if [ "$java_version" != "17" ]; then
+    echo ""
+    echo "❌ ERROR: Java 17 is required but Java $java_version is currently active"
+    echo ""
+    echo "Please set Java 17 before running this script:"
+    echo ""
+    echo "  export JAVA_HOME=/path/to/java17"
+    echo "  export PATH=\$JAVA_HOME/bin:\$PATH"
+    echo ""
+    echo "Common Java 17 locations:"
+    echo "  • macOS (Homebrew): /opt/homebrew/opt/openjdk@17"
+    echo "  • macOS (Intel):    /usr/local/opt/openjdk@17"
+    echo "  • Linux:            /usr/lib/jvm/java-17-openjdk"
+    echo ""
+    exit 1
+fi
+
+echo "✅ Java 17 detected"
 
 # Basic configuration
 JMETER_HOME=$(pwd)
@@ -120,7 +139,7 @@ RUN_DATE="${START_TIME:0:8}"  # Extract the date part (first 8 characters)
 echo "$START_TIME" > "$REPORT_PATH/start_time.txt"
 
 # Get JDBC_URL from connection properties file
-JDBC_URL=$(grep '^CONNECTION_STRING' "$CONNECTION_PROPERTIES" | awk -F'=' '{print $2}' | tr -d '[:space:]')
+JDBC_URL=$(grep '^CONNECTION_STRING' "$CONNECTION_PROPERTIES" | sed 's/^CONNECTION_STRING=//' | tr -d '"' | tr -d '[:space:]')
 
 # Check if JDBC_URL is empty or invalid
 if [[ -z "$JDBC_URL" ]]; then
