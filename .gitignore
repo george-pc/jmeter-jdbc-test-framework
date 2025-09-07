@@ -19,3 +19,6 @@ reports
 #ignore connection properties as it might have sensitive info
 connection_properties/*.properties
 
+#ignore Test Plan auto created backup file
+Test-Plans/*_backup_20*
+

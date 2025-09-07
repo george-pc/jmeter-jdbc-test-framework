@@ -122,6 +122,8 @@
           </elementProp>
         </collectionProp>
       </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
     </TestPlan>
     <hashTree>
       <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report">
@@ -223,7 +225,7 @@
       <hashTree/>
       <ConfigTestElement guiclass="PropertyControlGui" testclass="ConfigTestElement" testname="Property Display" enabled="true"/>
       <hashTree/>
-      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config">
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
         <stringProp name="filename">${QUERY_PATH}</stringProp>
         <stringProp name="fileEncoding">US-ASCII</stringProp>
         <stringProp name="variableNames">QUERY_ALIAS,QUERY</stringProp>
@@ -385,7 +387,7 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
           <hashTree/>
         </hashTree>
       </hashTree>
-      <com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup guiclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroupGui" testclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup" testname="Fire  QPS on arrivals as per  LOAD_PROFILE">
+      <com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup guiclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroupGui" testclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup" testname="Fire  QPS on arrivals as per  LOAD_PROFILE" enabled="true">
         <elementProp name="ThreadGroup.main_controller" elementType="com.blazemeter.jmeter.control.VirtualUserController"/>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <collectionProp name="Schedule">
@@ -398,6 +400,21 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
             <stringProp name="48">2</stringProp>
             <stringProp name="49">2</stringProp>
             <stringProp name="50">10</stringProp>
+          </collectionProp>
+          <collectionProp name="288510168">
+            <stringProp name="48">3</stringProp>
+            <stringProp name="49">3</stringProp>
+            <stringProp name="50">15</stringProp>
+          </collectionProp>
+          <collectionProp name="2961429892">
+            <stringProp name="48">4</stringProp>
+            <stringProp name="49">4</stringProp>
+            <stringProp name="50">20</stringProp>
+          </collectionProp>
+          <collectionProp name="4138736301">
+            <stringProp name="48">5</stringProp>
+            <stringProp name="49">5</stringProp>
+            <stringProp name="50">25</stringProp>
           </collectionProp>
         </collectionProp>
         <stringProp name="LogFilename"></stringProp>
@@ -549,7 +566,7 @@ log.info(&quot;🔄 Arrival Scheduled at: &quot; + Instant.now())</stringProp>
           <stringProp name="scriptLanguage">groovy</stringProp>
         </JSR223PreProcessor>
         <hashTree/>
-        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor">
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor" enabled="true">
           <stringProp name="scriptLanguage">groovy</stringProp>
           <stringProp name="parameters"></stringProp>
           <stringProp name="filename"></stringProp>
@@ -603,7 +620,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         </JDBCSampler>
         <hashTree/>
       </hashTree>
-      <PostThreadGroup guiclass="PostThreadGroupGui" testclass="PostThreadGroup" testname="tearDown Thread Group">
+      <PostThreadGroup guiclass="PostThreadGroupGui" testclass="PostThreadGroup" testname="tearDown Thread Group" enabled="true">
         <intProp name="ThreadGroup.num_threads">1</intProp>
         <intProp name="ThreadGroup.ramp_time">1</intProp>
         <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
@@ -614,7 +631,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         </elementProp>
       </PostThreadGroup>
       <hashTree>
-        <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="JSR223 PostProcessor">
+        <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="JSR223 PostProcessor" enabled="true">
           <stringProp name="cacheKey">false</stringProp>
           <stringProp name="filename"></stringProp>
           <stringProp name="parameters"></stringProp>
@@ -623,7 +640,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         </JSR223PostProcessor>
         <hashTree/>
       </hashTree>
-      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -660,7 +677,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         <stringProp name="filename"></stringProp>
       </ResultCollector>
       <hashTree/>
-      <kg.apc.jmeter.vizualizers.CorrectedResultCollector guiclass="kg.apc.jmeter.vizualizers.ThreadsStateOverTimeGui" testclass="kg.apc.jmeter.vizualizers.CorrectedResultCollector" testname="jp@gc - Active Threads Over Time">
+      <kg.apc.jmeter.vizualizers.CorrectedResultCollector guiclass="kg.apc.jmeter.vizualizers.ThreadsStateOverTimeGui" testclass="kg.apc.jmeter.vizualizers.CorrectedResultCollector" testname="jp@gc - Active Threads Over Time" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
@@ -705,7 +722,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         <boolProp name="exclude_checkbox_state">false</boolProp>
       </kg.apc.jmeter.vizualizers.CorrectedResultCollector>
       <hashTree/>
-      <kg.apc.jmeter.vizualizers.CorrectedResultCollector guiclass="kg.apc.jmeter.vizualizers.TransactionsPerSecondGui" testclass="kg.apc.jmeter.vizualizers.CorrectedResultCollector" testname="jp@gc - Transactions per Second">
+      <kg.apc.jmeter.vizualizers.CorrectedResultCollector guiclass="kg.apc.jmeter.vizualizers.TransactionsPerSecondGui" testclass="kg.apc.jmeter.vizualizers.CorrectedResultCollector" testname="jp@gc - Transactions per Second" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
