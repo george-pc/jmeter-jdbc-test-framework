@@ -152,6 +152,7 @@ Execute the interactive test runner:
 ├── test.properties
     └── [Test properties file *.properties]
     └── [sample_test.properties ]
+    └── [load_profile.csv ]    
 ├── Scripts
     ├── run_jmeter_tests_interactive.sh
 └── Test-Plans
@@ -204,33 +205,43 @@ COPY_TO_S3=false
 S3_REPORT_PATH=s3://
 
 #Change below for concurrency based test plan which will maintain this concurrency. This applicable only for concurrency based plan
-CONCURRENT_QUERY_COUNT=2
+**CONCURRENT_QUERY_COUNT=2**
 
 #Change below if u want to add RAMP_TIME(min) and RAMP_UP_STEPS (counts) to reach target concurrency 
 RAMP_UP_TIME=1
 RAMP_UP_STEPS=1
 
 #Total time to run the test in minutes i.e hold the load. This is after ramp up time 
-HOLD_PERIOD=300
+**HOLD_PERIOD=300**
 
 #Change below for QPM based Test Plan which will fire below number of queries per minute. This is applicable only for QPM based test Plan
 QPM=10
 
 #Change below for QPS based Test Plan which will fire below number of queries per sec. This is applicable only for QPs based test Plan
-QPS=1
+**QPS=1**
 
 #Change below for load_profile based Test Plan. This will be applicable only if u select the load profile Test Plan
-LOAD_PROFILE=test_properties/load_profile.csv
+**LOAD_PROFILE=test_properties/load_profile.csv**
 
 #To select queries from the CSV in Random Order set below to true
 RANDOM_ORDER=true
 
 # Set below variable to true if you want to Repeat the queries in the CSV, this essentially means queries will repeat till the test duration 
-RECYCLE_ON_EOF=false
+**RECYCLE_ON_EOF=false**
 
 #Change below to the absolute path of your query file
 QUERY_PATH=../data_files/Benchmark_TPCDS-51-queries_without_bootstrap.csv
 
+```
+**load_profile.csv:**
+```
+# E6 Jmeter Test properties
+StartValue,EndValue,Duration
+1,1,5
+2,2,10
+3,3,15
+4,4,20
+5,5,25
 ```
 
 ## Important Note
