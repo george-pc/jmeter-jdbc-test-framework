@@ -70,7 +70,7 @@ sudo yum install -y jq
 sudo dnf install -y jq
 
 # Verify:
-jq --version
+jq -V
 ```
 
 ### Install git - If not installed
@@ -80,7 +80,7 @@ sudo yum install git
 
 ### Clone the repo
 ```
-git clone https://github.com/george-pc/jmeter-jdbc-test-plans.git
+git clone https://github.com/george-pc/jmeter-jdbc-test-framework.git
 ```
 
 ### change to the cloned directory
