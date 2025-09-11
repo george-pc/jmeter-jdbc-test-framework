@@ -123,6 +123,7 @@
           </elementProp>
         </collectionProp>
       </elementProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
     </TestPlan>
     <hashTree>
       <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report">
@@ -223,13 +224,13 @@
         <stringProp name="poolPreparedStatements">5</stringProp>
       </JDBCDataSource>
       <hashTree/>
-      <ConfigTestElement guiclass="PropertyControlGui" testclass="ConfigTestElement" testname="Property Display"/>
+      <ConfigTestElement guiclass="PropertyControlGui" testclass="ConfigTestElement" testname="Property Display" enabled="true"/>
       <hashTree/>
-      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config" enabled="true">
+      <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="CSV Data Set Config">
         <stringProp name="filename">${QUERY_PATH}</stringProp>
         <stringProp name="fileEncoding">US-ASCII</stringProp>
         <stringProp name="variableNames">QUERY_ALIAS,QUERY</stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <stringProp name="delimiter">,</stringProp>
         <boolProp name="quotedData">true</boolProp>
         <stringProp name="recycle">${RECYCLE_ON_EOF}</stringProp>
@@ -247,7 +248,7 @@
         </elementProp>
       </SetupThreadGroup>
       <hashTree>
-        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Flow Control Action">
+        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Flow Control Action" enabled="true">
           <intProp name="ActionProcessor.action">1</intProp>
           <intProp name="ActionProcessor.target">0</intProp>
           <stringProp name="ActionProcessor.duration">0</stringProp>
@@ -401,7 +402,7 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
         <boolProp name="same_user_on_next_iteration">true</boolProp>
       </com.blazemeter.jmeter.threads.concurrency.ConcurrencyThreadGroup>
       <hashTree>
-        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor" enabled="true">
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor" enabled="false">
           <stringProp name="scriptLanguage">groovy</stringProp>
           <stringProp name="parameters"></stringProp>
           <stringProp name="filename"></stringProp>
@@ -426,7 +427,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
 }</stringProp>
         </JSR223PreProcessor>
         <hashTree/>
-        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="Query_${QUERY_ALIAS}" enabled="true">
+        <JDBCSampler guiclass="TestBeanGUI" testclass="JDBCSampler" testname="${QUERY_ALIAS}">
           <stringProp name="dataSource">jdbcConfig</stringProp>
           <stringProp name="query">${QUERY}</stringProp>
           <stringProp name="queryArguments"></stringProp>

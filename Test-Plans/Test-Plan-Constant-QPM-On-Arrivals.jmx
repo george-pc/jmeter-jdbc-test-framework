@@ -110,6 +110,11 @@
             <stringProp name="Argument.value">${__P(RECYCLE_ON_EOF,false)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
+          <elementProp name="QPM" elementType="Argument">
+            <stringProp name="Argument.name">QPM</stringProp>
+            <stringProp name="Argument.value">${__P(QPM,30)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
         </collectionProp>
       </elementProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
@@ -213,7 +218,7 @@
         <stringProp name="filename">${QUERY_PATH}</stringProp>
         <stringProp name="fileEncoding">US-ASCII</stringProp>
         <stringProp name="variableNames">QUERY_ALIAS,QUERY</stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <stringProp name="delimiter">,</stringProp>
         <boolProp name="quotedData">true</boolProp>
         <stringProp name="recycle">${RECYCLE_ON_EOF}</stringProp>
@@ -244,7 +249,7 @@
       <com.blazemeter.jmeter.threads.arrivals.ArrivalsThreadGroup guiclass="com.blazemeter.jmeter.threads.arrivals.ArrivalsThreadGroupGui" testclass="com.blazemeter.jmeter.threads.arrivals.ArrivalsThreadGroup" testname="Constant Queries as per QPM on Arrivals" enabled="true">
         <elementProp name="ThreadGroup.main_controller" elementType="com.blazemeter.jmeter.control.VirtualUserController"/>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
-        <stringProp name="TargetLevel">${QPS}</stringProp>
+        <stringProp name="TargetLevel">${QPM}</stringProp>
         <stringProp name="RampUp">${RAMP_UP_TIME}</stringProp>
         <stringProp name="Steps">${RAMP_UP_STEPS}</stringProp>
         <stringProp name="Hold">${HOLD_PERIOD}</stringProp>
@@ -256,7 +261,7 @@
         <boolProp name="same_user_on_next_iteration">true</boolProp>
       </com.blazemeter.jmeter.threads.arrivals.ArrivalsThreadGroup>
       <hashTree>
-        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor" enabled="true">
+        <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="JSR223 PreProcessor" enabled="false">
           <stringProp name="scriptLanguage">groovy</stringProp>
           <stringProp name="parameters"></stringProp>
           <stringProp name="filename"></stringProp>
@@ -321,7 +326,7 @@ if (&quot;false&quot;.equals(props.get(&quot;RECYCLE_ON_EOF&quot;)) &amp;&amp; (
         </elementProp>
       </PostThreadGroup>
       <hashTree/>
-      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>

@@ -189,7 +189,7 @@ if [[ "$TEST_PLAN" == *"load-profile"* ]] || [[ "$TEST_PLAN" == *"load_profile"*
       echo "📂 Load profile: $LOAD_PROFILE_PATH"
       
       # Check if update script exists
-      UPDATE_SCRIPT="$(dirname "$0")/update_load_profile.sh"
+      UPDATE_SCRIPT="$(dirname "$0")/utilities/update_load_profile.sh"
       if [[ -f "$UPDATE_SCRIPT" ]]; then
         echo "🔄 Updating test plan with load profile..."
         "$UPDATE_SCRIPT" "$LOAD_PROFILE_PATH" "$TEST_PLAN"
@@ -200,7 +200,7 @@ if [[ "$TEST_PLAN" == *"load-profile"* ]] || [[ "$TEST_PLAN" == *"load_profile"*
           echo "⚠️  Warning: Failed to update test plan with load profile"
         fi
       else
-        echo "⚠️  Warning: update_load_profile.sh not found, using static schedule in test plan"
+        echo "⚠️  Warning: utilities/update_load_profile.sh not found, using static schedule in test plan"
       fi
       echo ""
     fi

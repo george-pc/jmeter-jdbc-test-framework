@@ -22,3 +22,9 @@ connection_properties/*.properties
 #ignore Test Plan auto created backup file
 Test-Plans/*_backup_20*
 
+#ignore backups directory
+backups/
+
+#ignore any backup files anywhere
+*.backup_*
+

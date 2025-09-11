@@ -35,8 +35,22 @@ echo "==========================================================================
 echo -e "${BLUE}🚀 JMeter Load Profile Updater${NC}"
 echo "================================================================================"
 
-# Create backup
-BACKUP_FILE="${JMX_FILE}.backup_$(date +%Y%m%d_%H%M%S)"
+# Create backups directory if it doesn't exist
+BACKUP_DIR="backups"
+mkdir -p "$BACKUP_DIR"
+
+# Clean up old backup files (keep only last 3 backups)
+JMX_BASE=$(basename "$JMX_FILE")
+OLD_BACKUPS=$(ls -1t "${BACKUP_DIR}/${JMX_BASE}.backup_"* 2>/dev/null | tail -n +4)
+if [ -n "$OLD_BACKUPS" ]; then
+    echo -e "${BLUE}🧹 Cleaning up old backups...${NC}"
+    echo "$OLD_BACKUPS" | xargs rm -f
+    CLEANED_COUNT=$(echo "$OLD_BACKUPS" | wc -l)
+    echo -e "${GREEN}   Removed $CLEANED_COUNT old backup(s)${NC}"
+fi
+
+# Create backup in backups directory
+BACKUP_FILE="${BACKUP_DIR}/${JMX_BASE}.backup_$(date +%Y%m%d_%H%M%S)"
 cp "$JMX_FILE" "$BACKUP_FILE"
 echo -e "${GREEN}💾 Created backup: $BACKUP_FILE${NC}"
 
@@ -52,6 +66,7 @@ echo -e "\n${BLUE}📖 Reading load profile: $LOAD_PROFILE${NC}"
 
 # Initialize variables
 TOTAL_QUERIES=0
+TOTAL_DURATION=0
 SCHEDULE_XML=""
 STEP=0
 
@@ -62,10 +77,10 @@ while IFS=',' read -r start_value end_value duration; do
         continue
     fi
     
-    # Remove any whitespace
-    start_value=$(echo "$start_value" | tr -d ' ')
-    end_value=$(echo "$end_value" | tr -d ' ')
-    duration=$(echo "$duration" | tr -d ' ')
+    # Remove any whitespace and carriage returns
+    start_value=$(echo "$start_value" | tr -d ' \r')
+    end_value=$(echo "$end_value" | tr -d ' \r')
+    duration=$(echo "$duration" | tr -d ' \r')
     
     # Skip if any value is empty
     if [ -z "$start_value" ] || [ -z "$end_value" ] || [ -z "$duration" ]; then
@@ -78,6 +93,7 @@ while IFS=',' read -r start_value end_value duration; do
     AVG_QPS=$(( (start_value + end_value) / 2 ))
     QUERIES_THIS_STEP=$(( AVG_QPS * duration ))
     TOTAL_QUERIES=$(( TOTAL_QUERIES + QUERIES_THIS_STEP ))
+    TOTAL_DURATION=$(( TOTAL_DURATION + duration ))
     
     echo "  Step $STEP: ${start_value}-${end_value} QPS for ${duration}s = ${QUERIES_THIS_STEP} queries"
     
@@ -94,7 +110,20 @@ while IFS=',' read -r start_value end_value duration; do
     
 done < "$LOAD_PROFILE"
 
-echo -e "\n${GREEN}📊 Total expected queries: $TOTAL_QUERIES${NC}"
+# Calculate time formatting
+HOURS=$(( TOTAL_DURATION / 3600 ))
+MINUTES=$(( (TOTAL_DURATION % 3600) / 60 ))
+SECONDS=$(( TOTAL_DURATION % 60 ))
+
+# Calculate expected completion time
+CURRENT_TIME=$(date +%s)
+COMPLETION_TIME=$(( CURRENT_TIME + TOTAL_DURATION ))
+COMPLETION_FORMATTED=$(date -r $COMPLETION_TIME '+%Y-%m-%d %H:%M:%S')
+
+echo -e "\n${GREEN}📊 Load Profile Summary:${NC}"
+echo -e "${GREEN}   • Total expected queries: $TOTAL_QUERIES${NC}"
+echo -e "${GREEN}   • Total test duration: ${TOTAL_DURATION}s (${HOURS}h ${MINUTES}m ${SECONDS}s)${NC}"
+echo -e "${GREEN}   • Expected completion: $COMPLETION_FORMATTED${NC}"
 
 # Create complete Schedule XML block
 COMPLETE_SCHEDULE="        <collectionProp name=\"Schedule\">
