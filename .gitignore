@@ -28,3 +28,9 @@ backups/
 #ignore any backup files anywhere
 *.backup_*
 
+# IDE and system files
+.DS_Store
+.idea/
+.vscode/
+.claude/
+
