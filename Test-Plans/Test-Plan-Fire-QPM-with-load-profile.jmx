@@ -2,7 +2,6 @@
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Test-Plan-Fire-QPM-with-load-profile">
-      <boolProp name="TestPlan.serialize_threadgroups">true</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
         <collectionProp name="Arguments.arguments">
@@ -121,9 +120,15 @@
             <stringProp name="Argument.value">${__P(LOAD_PROFILE,&quot;test_properties/load_profile.csv&quot;)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
+          <elementProp name="QPM" elementType="Argument">
+            <stringProp name="Argument.name">QPM</stringProp>
+            <stringProp name="Argument.value">${__P(QPM,30)}</stringProp>
+            <stringProp name="Argument.metadata">=</stringProp>
+          </elementProp>
         </collectionProp>
       </elementProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
     </TestPlan>
     <hashTree>
       <ResultCollector guiclass="StatVisualizer" testclass="ResultCollector" testname="Aggregate Report">
@@ -230,7 +235,7 @@
         <stringProp name="filename">${QUERY_PATH}</stringProp>
         <stringProp name="fileEncoding">US-ASCII</stringProp>
         <stringProp name="variableNames">QUERY_ALIAS,QUERY</stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <stringProp name="delimiter">,</stringProp>
         <boolProp name="quotedData">true</boolProp>
         <stringProp name="recycle">${RECYCLE_ON_EOF}</stringProp>
@@ -388,14 +393,19 @@ log.info(&quot;✅ Test configuration saved to: &quot; + configFile.absolutePath
           <hashTree/>
         </hashTree>
       </hashTree>
-      <com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup guiclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroupGui" testclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup" testname="Fire  QPM on arrivals as per LOAD_PROFILE ">
+      <com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup guiclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroupGui" testclass="com.blazemeter.jmeter.threads.arrivals.FreeFormArrivalsThreadGroup" testname="Fire  QPM on arrivals as per LOAD_PROFILE " enabled="true">
         <elementProp name="ThreadGroup.main_controller" elementType="com.blazemeter.jmeter.control.VirtualUserController"/>
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <collectionProp name="Schedule">
-          <collectionProp name="1873354706">
+          <collectionProp name="84474527">
+            <stringProp name="48">1</stringProp>
             <stringProp name="49">1</stringProp>
-            <stringProp name="1567">10</stringProp>
-            <stringProp name="1722">60</stringProp>
+            <stringProp name="50">5</stringProp>
+          </collectionProp>
+          <collectionProp name="84477033">
+            <stringProp name="48">2</stringProp>
+            <stringProp name="49">2</stringProp>
+            <stringProp name="50">10</stringProp>
           </collectionProp>
         </collectionProp>
         <stringProp name="LogFilename"></stringProp>
@@ -593,7 +603,7 @@ log.info(&quot;🔄 Arrival Scheduled at: &quot; + Instant.now())
         </JSR223PostProcessor>
         <hashTree/>
       </hashTree>
-      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree">
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
         <boolProp name="ResultCollector.error_logging">false</boolProp>
         <objProp>
           <name>saveConfig</name>
