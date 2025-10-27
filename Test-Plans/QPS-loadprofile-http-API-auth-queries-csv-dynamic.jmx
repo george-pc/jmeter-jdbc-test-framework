@@ -46,7 +46,7 @@
           </elementProp>
           <elementProp name="REPORT_PATH" elementType="Argument">
             <stringProp name="Argument.name">REPORT_PATH</stringProp>
-            <stringProp name="Argument.value">${__P(REPORT_PATH,&quot;reports&quot;)}</stringProp>
+            <stringProp name="Argument.value">${__P(REPORT_PATH,reports)}</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="START_TIME" elementType="Argument">
