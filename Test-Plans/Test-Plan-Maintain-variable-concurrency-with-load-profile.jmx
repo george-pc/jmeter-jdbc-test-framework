@@ -213,7 +213,7 @@
         <stringProp name="filename">${QUERY_PATH}</stringProp>
         <stringProp name="fileEncoding">US-ASCII</stringProp>
         <stringProp name="variableNames">QUERY_ALIAS,QUERY</stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <stringProp name="delimiter">,</stringProp>
         <boolProp name="quotedData">true</boolProp>
         <stringProp name="recycle">${RECYCLE_ON_EOF}</stringProp>

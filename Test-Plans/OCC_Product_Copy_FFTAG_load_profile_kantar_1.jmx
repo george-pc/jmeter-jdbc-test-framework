@@ -54,7 +54,7 @@
         <stringProp name="delimiter">,</stringProp>
         <stringProp name="fileEncoding"></stringProp>
         <stringProp name="filename">kantar/Products/OCC_Login_postman.csv</stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <boolProp name="quotedData">false</boolProp>
         <boolProp name="recycle">true</boolProp>
         <stringProp name="shareMode">shareMode.all</stringProp>
@@ -66,7 +66,7 @@
         <stringProp name="filename">kantar/Products/CSV_Files/Products_25Users.csv</stringProp>
         <stringProp name="fileEncoding"></stringProp>
         <stringProp name="variableNames"></stringProp>
-        <boolProp name="ignoreFirstLine">false</boolProp>
+        <boolProp name="ignoreFirstLine">true</boolProp>
         <stringProp name="delimiter">,</stringProp>
         <boolProp name="quotedData">false</boolProp>
         <boolProp name="recycle">true</boolProp>
