@@ -15,7 +15,7 @@ BOLD='\033[1m'
 
 # Default values
 DRY_RUN=false
-KEEP_DAYS=30
+KEEP_DAYS=3
 INTERACTIVE=true
 CLEAN_REPORTS=false
 CLEAN_JMETER_LOGS=false
