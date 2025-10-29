@@ -111,6 +111,26 @@ show_files "$CONNECTION_PROPERTIES_PATH" "*.properties" "CONNECTION PROPERTIES"
 SELECTED_CONNECTION_PROPERTIES=$(get_filename "$CONNECTION_PROPERTIES_PATH" "$DEFAULT_CONNECTION_PROPERTIES" "CONNECTION PROPERTIES")
 CONNECTION_PROPERTIES="${CONNECTION_PROPERTIES_PATH}/${SELECTED_CONNECTION_PROPERTIES}"
 
+# Auto-detect ENGINE from DRIVER_CLASS if not explicitly set in metadata
+if [[ -z "${ENGINE:-}" ]] || [[ "${ENGINE}" == "unknown" ]]; then
+    DRIVER_CLASS_DETECT=$(grep "^DRIVER_CLASS=" "$CONNECTION_PROPERTIES" 2>/dev/null | cut -d'=' -f2 | tr -d '"' || echo "")
+    if [[ -n "$DRIVER_CLASS_DETECT" ]]; then
+        case "$DRIVER_CLASS_DETECT" in
+            *e6-jdbc-driver*) ENGINE="e6data" ;;
+            *databricks-jdbc*) ENGINE="databricks" ;;
+            *trino-jdbc*) ENGINE="trino" ;;
+            *presto-jdbc*) ENGINE="presto" ;;
+            *athena-jdbc*|*AthenaJDBC*) ENGINE="athena" ;;
+            *snowflake-jdbc*) ENGINE="snowflake" ;;
+            *) ENGINE="unknown" ;;
+        esac
+        echo "ℹ️  Auto-detected ENGINE='$ENGINE' from DRIVER_CLASS='$DRIVER_CLASS_DETECT'"
+    else
+        ENGINE="unknown"
+        echo "⚠️  WARNING: Could not auto-detect ENGINE, using 'unknown'"
+    fi
+fi
+
 # QUERIES FILE
 show_files "$QUERIES_PATH" "*.csv" "QUERIES FILE"
 SELECTED_QUERIES_FILE=$(get_filename "$QUERIES_PATH" "$DEFAULT_QUERIES" "QUERIES FILE")
@@ -739,21 +759,27 @@ else
 fi
 
 # Determine RUN_TYPE from test configuration (auto-detection)
-if [[ -n "${RUN_TYPE:-}" ]]; then
-    # Use explicit value from metadata file if provided
-    :
-elif [[ "$(basename $TEST_PLAN)" =~ "Run-Once" ]] || [[ "$TEST_CONCURRENT_QUERY_COUNT" == "1" ]]; then
+# CRITICAL: Use ACTUAL values from test_properties (TEST_*), not metadata values
+# This ensures S3 path matches actual test execution configuration
+if [[ -n "${RUN_TYPE:-}" ]] && [[ "${RUN_TYPE}" != "unknown" ]]; then
+    # Use explicit value from metadata file if provided and valid
+    echo "ℹ️  Using RUN_TYPE='$RUN_TYPE' from metadata"
+elif [[ "$(basename $TEST_PLAN)" =~ "Run-Once" ]] || [[ "$TEST_CONCURRENT_THREADS" == "1" ]]; then
     RUN_TYPE="sequential"
-elif [[ "$(basename $TEST_PLAN)" =~ "static-concurrency" ]] && [[ -n "$TEST_CONCURRENT_QUERY_COUNT" ]]; then
-    RUN_TYPE="concurrency_${TEST_CONCURRENT_QUERY_COUNT}"
-elif [[ "$(basename $TEST_PLAN)" =~ "QPS" ]] && [[ -n "$TEST_QPS" ]]; then
+elif [[ "$(basename $TEST_PLAN)" =~ "static-concurrency" ]] && [[ -n "$TEST_CONCURRENT_THREADS" ]] && [[ "$TEST_CONCURRENT_THREADS" != "unknown" ]]; then
+    RUN_TYPE="concurrency_${TEST_CONCURRENT_THREADS}"
+    echo "ℹ️  Auto-detected RUN_TYPE='$RUN_TYPE' from test_properties CONCURRENT_QUERY_COUNT=$TEST_CONCURRENT_THREADS"
+elif [[ "$(basename $TEST_PLAN)" =~ "QPS" ]] && [[ -n "$TEST_QPS" ]] && [[ "$TEST_QPS" != "" ]]; then
     RUN_TYPE="arrivals_${TEST_QPS}qps"
-elif [[ "$(basename $TEST_PLAN)" =~ "QPM" ]] && [[ -n "$TEST_QPM" ]]; then
+    echo "ℹ️  Auto-detected RUN_TYPE='$RUN_TYPE' from test_properties QPS=$TEST_QPS"
+elif [[ "$(basename $TEST_PLAN)" =~ "QPM" ]] && [[ -n "$TEST_QPM" ]] && [[ "$TEST_QPM" != "" ]]; then
     RUN_TYPE="arrivals_${TEST_QPM}qpm"
+    echo "ℹ️  Auto-detected RUN_TYPE='$RUN_TYPE' from test_properties QPM=$TEST_QPM"
 elif [[ "$(basename $TEST_PLAN)" =~ "load-profile" ]] || [[ "$(basename $TEST_PLAN)" =~ "variable-concurrency" ]]; then
     RUN_TYPE="loadprofile_variable"
 else
     RUN_TYPE="unknown"
+    echo "⚠️  WARNING: Could not determine RUN_TYPE, using 'unknown'"
 fi
 
 # Validation warnings for missing critical metadata
@@ -776,8 +802,25 @@ fi
 # 4-Level partition structure: engine/cluster_size/benchmark/run_type
 if [[ "$COPY_TO_S3" == "true" ]]; then
     S3_UPLOAD_PATH="s3://e6-jmeter/jmeter-results/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
+
+    # Display S3 path summary for user verification
+    echo ""
+    echo "================================================"
+    echo " S3 UPLOAD CONFIGURATION"
+    echo "================================================"
+    echo "Results will be uploaded to:"
+    echo "  $S3_UPLOAD_PATH"
+    echo ""
+    echo "S3 Path Components (used for partitioning):"
+    echo "  • engine: $ENGINE"
+    echo "  • cluster_size: $CLUSTER_SIZE"
+    echo "  • benchmark: $BENCHMARK_TYPE"
+    echo "  • run_type: $RUN_TYPE"
+    echo "================================================"
+    echo ""
 else
     S3_UPLOAD_PATH="None"
+    echo "ℹ️  S3 upload is disabled (COPY_TO_S3=false)"
 fi
 
 JSON_SUMMARY=$(jq -n \
