@@ -1,11 +1,11 @@
 #!/bin/bash
 # Generator script to create metadata files and test input files for concurrency testing
-# Generates files for e6data and Databricks across cluster sizes S and M with concurrency 2,4,8,12,16
+# Generates files for e6data and Databricks across cluster sizes S, M, and L with concurrency 2,4,8,12,16
 
 set -e
 
 # Configuration
-CLUSTER_SIZES=("S" "M")
+CLUSTER_SIZES=("S" "M" "L")
 CONCURRENCY_LEVELS=(2 4 8 12 16)
 ENGINES=("e6data" "databricks")
 
