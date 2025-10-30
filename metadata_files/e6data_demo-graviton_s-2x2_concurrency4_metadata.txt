@@ -43,7 +43,7 @@ RUN_METADATA='{
   "test_timestamp": "20251030_145741",
   "jmeter_version": "5.6.3",
   "jdbc_driver": "e6-jdbc-driver-1.2.82-with-dependencies.jar",
-  "queries_file": "E6_TPCDS_1TB_Optimised_51_Jmeter_queries.csv",
+  "queries_file": "E6Data_JPMC_TPCDS_queries_TPCDS_29_queries_sorted.csv",
   "total_queries": 29,
   "test_plan": "Test-Plan-Maintain-static-concurrency.jmx"
 }'
