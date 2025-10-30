@@ -1,0 +1,49 @@
+# E6Data Cluster Configuration
+ENGINE=e6data
+COPY_TO_S3=true
+
+CLUSTER_CONFIG='{
+  "cluster_id": "demo-graviton",
+  "cluster_name": "demo-graviton",
+  "cluster_size": "S-2x2",
+  "instance_type": "graviton",
+  "executors": 2,
+  "cores_per_executor": 30,
+  "total_cores": 60,
+  "memory_per_executor_gb": "unknown",
+  "serverless": "N",
+  "vpc": "unknown",
+  "region": "unknown"
+}'
+
+# Test Configuration
+TEST_CONFIG='{
+  "test_type": "static_concurrency",
+  "concurrency_level": 2,
+  "test_duration_minutes": 5,
+  "ramp_up_seconds": 0,
+  "query_timeout_seconds": 300,
+  "random_order": false,
+  "recycle_on_eof": false,
+  "stop_thread_on_eof": true
+}'
+
+# S3 Configuration
+S3_CONFIG='{
+  "copy_to_s3": true,
+  "engine": "e6data",
+  "cluster_size": "S-2x2",
+  "benchmark": "tpcds_29_1tb",
+  "run_type": "concurrency_2"
+}'
+
+# Metadata
+RUN_METADATA='{
+  "test_date": "2025-10-30",
+  "test_timestamp": "20251030_145741",
+  "jmeter_version": "5.6.3",
+  "jdbc_driver": "e6-jdbc-driver-1.2.82-with-dependencies.jar",
+  "queries_file": "E6_TPCDS_1TB_Optimised_51_Jmeter_queries.csv",
+  "total_queries": 29,
+  "test_plan": "Test-Plan-Maintain-static-concurrency.jmx"
+}'
