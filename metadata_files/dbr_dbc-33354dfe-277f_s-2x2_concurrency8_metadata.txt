@@ -24,7 +24,7 @@ CLUSTER_CONFIG='{
   "cluster_mode": "serverless",
   "min_clusters": 2,
   "max_clusters": 2,
-  "estimated_cores": "~120",
+  "estimated_cores": "~60",
   "runtime_version": "unknown",
   "driver_node_type": "unknown",
   "worker_node_type": "unknown",
