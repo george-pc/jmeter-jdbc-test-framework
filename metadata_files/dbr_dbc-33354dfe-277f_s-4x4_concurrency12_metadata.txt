@@ -1,4 +1,7 @@
 # Databricks Cluster/Warehouse Configuration
+ENGINE=databricks
+COPY_TO_S3=true
+
 CLUSTER_CONFIG='{
   "warehouse_id": "e020ff73ae69ed5a",
   "warehouse_type": "SQL Warehouse",
