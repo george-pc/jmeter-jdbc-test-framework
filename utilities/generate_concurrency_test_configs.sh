@@ -91,21 +91,26 @@ EOF
 create_databricks_metadata() {
     local cluster_size=$1
     local concurrency=$2
+
+    # Map cluster size to new format with min/max clusters
+    # All Databricks tests use min=1, max=1 (no autoscaling)
+    local cluster_size_formatted="${cluster_size}-1x1"
+
     local metadata_file="$METADATA_DIR/dbr_dbc-33354dfe-277f_${cluster_size,,}_concurrency${concurrency}_metadata.txt"
 
     echo "  Creating: $metadata_file"
     cat > "$metadata_file" << EOF
 # ========================================
 # Databricks Cluster Test Metadata
-# Cluster Size: ${cluster_size} - ${concurrency} Concurrent Threads
+# Cluster Size: ${cluster_size}-1x1 - ${concurrency} Concurrent Threads
 # ========================================
 
 # Test Run Identification
-ALIAS="databricks-${cluster_size,,}-concurrency${concurrency}"
+ALIAS="databricks-${cluster_size,,}-1x1-concurrency${concurrency}"
 ENGINE="databricks"
 MODE="benchmark"
-TAGS="performance,benchmark,databricks,tpcds,azure,JPMC,concurrency-${concurrency},${cluster_size,,},run-1"
-COMMENTS="Databricks SQL Warehouse ${cluster_size} cluster - 29 TPCDS queries on 1TB dataset with ${concurrency} concurrent threads - Cold start, Run 1"
+TAGS="performance,benchmark,databricks,tpcds,azure,JPMC,concurrency-${concurrency},${cluster_size,,}-1x1,run-1"
+COMMENTS="Databricks SQL Warehouse ${cluster_size}-1x1 cluster - 29 TPCDS queries on 1TB dataset with ${concurrency} concurrent threads - Cold start, Run 1"
 
 # Cloud & Region
 CLOUD="Azure"
@@ -116,15 +121,17 @@ AVAILABILITY_ZONE="unknown"
 CLUSTER_CONFIG='{
   "warehouse_id": "e020ff73ae69ed5a",
   "warehouse_type": "SQL Warehouse",
-  "cluster_size": "${cluster_size}",
+  "cluster_size": "${cluster_size_formatted}",
   "warehouse_size": "$(case $cluster_size in S) echo "Small";; M) echo "Medium";; L) echo "Large";; *) echo "Unknown";; esac)",
   "cluster_mode": "serverless",
+  "min_clusters": 1,
+  "max_clusters": 1,
   "runtime_version": "unknown",
   "driver_node_type": "unknown",
   "worker_node_type": "unknown",
   "min_workers": "unknown",
   "max_workers": "unknown",
-  "autoscaling_enabled": "unknown",
+  "autoscaling_enabled": "false",
   "spot_instances": "unknown",
   "photon_enabled": "unknown",
   "delta_cache_enabled": "unknown"
@@ -196,21 +203,32 @@ EOF
 create_e6data_metadata() {
     local cluster_size=$1
     local concurrency=$2
+
+    # Map cluster size to new format with executor counts
+    # e6data sizing: S=2 executors, M=4 executors, L=8 executors (30 cores each)
+    local executor_count=$(case $cluster_size in
+        S) echo "2";;
+        M) echo "4";;
+        L) echo "8";;
+        *) echo "unknown";;
+    esac)
+    local cluster_size_formatted="${cluster_size}-${executor_count}x${executor_count}"
+
     local metadata_file="$METADATA_DIR/e6data_demo-graviton_${cluster_size,,}_concurrency${concurrency}_metadata.txt"
 
     echo "  Creating: $metadata_file"
     cat > "$metadata_file" << EOF
 # ========================================
 # e6data demo-graviton Cluster Test Metadata
-# Cluster Size: ${cluster_size} - ${concurrency} Concurrent Threads
+# Cluster Size: ${cluster_size}-${executor_count}x${executor_count} - ${concurrency} Concurrent Threads
 # ========================================
 
 # Test Run Identification
-ALIAS="e6data-demo-graviton-${cluster_size,,}-concurrency${concurrency}"
+ALIAS="e6data-demo-graviton-${cluster_size,,}-${executor_count}x${executor_count}-concurrency${concurrency}"
 ENGINE="e6data"
 MODE="benchmark"
-TAGS="performance,benchmark,e6data,tpcds,aws,JPMC,concurrency-${concurrency},${cluster_size,,},run-1"
-COMMENTS="e6data graviton ${cluster_size} cluster - 29 TPCDS queries on 1TB dataset with ${concurrency} concurrent threads - Cold start, Run 1"
+TAGS="performance,benchmark,e6data,tpcds,aws,JPMC,concurrency-${concurrency},${cluster_size,,}-${executor_count}x${executor_count},run-1"
+COMMENTS="e6data graviton ${cluster_size}-${executor_count}x${executor_count} cluster - 29 TPCDS queries on 1TB dataset with ${concurrency} concurrent threads - Cold start, Run 1"
 
 # Cloud & Region
 CLOUD="AWS"
@@ -221,7 +239,10 @@ AVAILABILITY_ZONE="unknown"
 CLUSTER_CONFIG='{
   "cluster_id": "demo-graviton",
   "cluster_name": "demo-graviton",
-  "cluster_size": "${cluster_size}",
+  "cluster_size": "${cluster_size_formatted}",
+  "executors": ${executor_count},
+  "cores_per_executor": 30,
+  "total_cores": $((executor_count * 30)),
   "nodes": "1",
   "instance_type": "r7iz.8xlarge",
   "vcpus_per_node": "32",
@@ -248,7 +269,7 @@ DATA_TYPE="TPCDS"
 DATASET_NAME="TPCDS 1TB"
 QUERY_COUNT="29"
 QUERY_SOURCE="JPMC selected TPCDS queries (sorted)"
-ADDITIONAL_INFO="e6data demo-graviton ${cluster_size} cluster, ${concurrency} concurrent threads, glue_catalog, tpcds_1000_delta schema, Delta Lake format, 29 TPCDS queries"
+ADDITIONAL_INFO="e6data demo-graviton ${cluster_size}-${executor_count}x${executor_count} cluster, ${concurrency} concurrent threads, ${executor_count} executors × 30 cores = $((executor_count * 30)) cores, glue_catalog, tpcds_1000_delta schema, Delta Lake format, 29 TPCDS queries"
 
 # Benchmark & Run Type (Optional - auto-detected if not specified)
 BENCHMARK_TYPE="tpcds_29_1tb"
@@ -270,8 +291,8 @@ OWNER="jagannath@e6x.io"
 
 # Comparison Baseline
 BASELINE_ENGINE="databricks"
-BASELINE_CLUSTER="${cluster_size} cluster comparison"
-COMPARISON_GOAL="Compare e6data ${cluster_size} vs Databricks ${cluster_size} on TPCDS 29 queries with ${concurrency} concurrent threads"
+BASELINE_CLUSTER="${cluster_size}-1x1 cluster comparison"
+COMPARISON_GOAL="Compare e6data ${cluster_size}-${executor_count}x${executor_count} ($((executor_count * 30)) cores) vs Databricks ${cluster_size}-1x1 on TPCDS 29 queries with ${concurrency} concurrent threads"
 
 # S3 Upload Configuration
 COPY_TO_S3=true
