@@ -1,0 +1,17 @@
+# Databricks S-2x2 Cluster Configuration
+# ~60 cores
+
+ENGINE=databricks
+COPY_TO_S3=true
+
+CLUSTER_CONFIG='{
+  "cluster_size": "S-2x2",
+  "estimated_cores": 60,
+  "instance_type": "unknown",
+  "warehouse_size": "Small",
+  "min_clusters": 2,
+  "max_clusters": 2,
+  "serverless": "Y",
+  "spot_instance_policy": "COST_OPTIMIZED",
+  "enable_photon": true
+}'

@@ -1,0 +1,14 @@
+# E6Data S-2x2 Cluster Configuration
+# 60 cores (2 executors × 30 cores)
+
+ENGINE=e6data
+COPY_TO_S3=true
+
+CLUSTER_CONFIG='{
+  "cluster_size": "S-2x2",
+  "estimated_cores": 60,
+  "instance_type": "graviton",
+  "executors": 2,
+  "cores_per_executor": 30,
+  "serverless": "N"
+}'
