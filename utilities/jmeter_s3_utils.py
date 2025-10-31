@@ -20,11 +20,18 @@ from datetime import datetime
 class JMeterS3Path:
     """Parse and validate JMeter S3 result paths."""
 
-    # Expected format: s3://bucket/jmeter-results/engine=X/cluster_size=Y/benchmark=Z/run_type=W/
-    PATH_PATTERN = re.compile(
+    # Support two formats:
+    # 1. s3://bucket/.../engine=X/cluster_size=Y/benchmark=Z/run_type=W/
+    # 2. s3://bucket/.../engine=X/cluster_size=Y/benchmark=Z/concurrency_N/
+    PATH_PATTERN_WITH_RUN_TYPE = re.compile(
         r's3://(?P<bucket>[^/]+)/(?P<prefix>.*?)/engine=(?P<engine>[^/]+)/'
         r'cluster_size=(?P<cluster_size>[^/]+)/benchmark=(?P<benchmark>[^/]+)/'
         r'run_type=(?P<run_type>[^/]+)/?'
+    )
+    PATH_PATTERN_DIRECT = re.compile(
+        r's3://(?P<bucket>[^/]+)/(?P<prefix>.*?)/engine=(?P<engine>[^/]+)/'
+        r'cluster_size=(?P<cluster_size>[^/]+)/benchmark=(?P<benchmark>[^/]+)/'
+        r'(?P<run_type>(?:concurrency_\d+|sequential))/?'
     )
 
     def __init__(self, s3_path: str):
@@ -34,7 +41,12 @@ class JMeterS3Path:
 
     def _parse_path(self) -> Dict[str, str]:
         """Parse S3 path and extract metadata."""
-        match = self.PATH_PATTERN.match(self.raw_path)
+        # Try run_type= format first
+        match = self.PATH_PATTERN_WITH_RUN_TYPE.match(self.raw_path)
+        if not match:
+            # Try direct concurrency_X format
+            match = self.PATH_PATTERN_DIRECT.match(self.raw_path)
+
         if not match:
             raise ValueError(f"Invalid S3 path format: {self.raw_path}")
 

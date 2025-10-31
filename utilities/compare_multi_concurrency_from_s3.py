@@ -39,21 +39,31 @@ def find_concurrency_runs(base_s3_path: str) -> List[Tuple[int, str]]:
     """Find all concurrency run directories under a base path."""
     # List directories
     base_path = base_s3_path.rstrip('/') + '/'
-    
+
     # List all files to find run_type directories
     files = list_s3_files(base_path)
-    
+
     # Extract unique run_type directories
     concurrency_runs = set()
     for file in files:
-        # Extract run_type from path
+        # Try both formats:
+        # 1. run_type=concurrency_X/
+        # 2. concurrency_X/ (direct)
         match = re.search(r'run_type=(concurrency_\d+)/', file)
         if match:
             run_type = match.group(1)
             concurrency = int(run_type.split('_')[1])
-            full_path = base_path + run_type + '/'
+            full_path = base_path + 'run_type=' + run_type + '/'
             concurrency_runs.add((concurrency, full_path))
-    
+        else:
+            # Try direct format
+            match = re.search(r'/(concurrency_\d+)/', file)
+            if match:
+                run_type = match.group(1)
+                concurrency = int(run_type.split('_')[1])
+                full_path = base_path + run_type + '/'
+                concurrency_runs.add((concurrency, full_path))
+
     # Sort by concurrency level
     return sorted(list(concurrency_runs))
 
@@ -161,9 +171,17 @@ def generate_multi_concurrency_csv(
         writer.writerow([])
         writer.writerow(['SUMMARY STATISTICS'])
         
-        for stat_label in ['Average', 'Median', 'p90', 'p95', 'p99']:
+        # Map stat labels to metric keys
+        stat_metrics = {
+            'Average': 'avg',
+            'Median': 'median',
+            'p90': 'p90',
+            'p95': 'p95',
+            'p99': 'p99'
+        }
+
+        for stat_label, metric_key in stat_metrics.items():
             row = [stat_label]
-            metric_key = stat_label.lower()
             
             for conc in concurrency_levels:
                 if conc not in concurrency_data:
