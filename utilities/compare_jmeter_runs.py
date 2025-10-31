@@ -1,535 +1,350 @@
 #!/usr/bin/env python3
 """
-JMeter Test Run Comparison Tool
-
-Compares two JMeter test runs using their test_result.json files.
-Provides detailed analysis of performance differences, configuration changes,
-and query-level comparisons.
+Compare two JMeter runs from S3 and generate standardized reports.
 
 Usage:
-    python compare_jmeter_runs.py <run1_result.json> <run2_result.json> [--format {text|json|markdown}]
+    python compare_jmeter_runs.py S3_PATH_1 S3_PATH_2 [--output-dir reports]
 
-Examples:
-    # Compare two local files
-    python compare_jmeter_runs.py reports/test_result_20251029-083259.json reports/test_result_20251029-084324.json
-
-    # Compare from S3
-    python compare_jmeter_runs.py s3://bucket/run1/test_result.json s3://bucket/run2/test_result.json
-
-    # Output as markdown
-    python compare_jmeter_runs.py run1.json run2.json --format markdown > comparison.md
+Example:
+    python compare_jmeter_runs.py \
+        s3://e6-jmeter/jmeter-results/engine=e6data/cluster_size=M/benchmark=tpcds_29_1tb/run_type=concurrency_2/ \
+        s3://e6-jmeter/jmeter-results/engine=databricks/cluster_size=S-4x4/benchmark=tpcds_29_1tb/run_type=concurrency_2/
 """
 
-import json
 import sys
+import csv
 import argparse
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
-import subprocess
+from typing import Dict, List
+import tempfile
+
+# Import our utilities
+from jmeter_s3_utils import (
+    JMeterS3Path,
+    download_jmeter_statistics,
+    load_jmeter_statistics,
+    extract_query_metrics,
+    create_query_mapping,
+    calculate_percentage_diff,
+    format_percentage,
+    get_timestamp,
+)
 
 
-def load_json_file(file_path: str) -> Dict:
-    """Load JSON from local file or S3."""
-    if file_path.startswith('s3://'):
-        # Download from S3 using AWS CLI
-        try:
-            result = subprocess.run(
-                ['aws', 's3', 'cp', file_path, '-'],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return json.loads(result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(f"Error downloading from S3: {e}", file=sys.stderr)
-            sys.exit(1)
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON from S3: {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        # Load from local file
-        try:
-            with open(file_path, 'r') as f:
-                return json.load(f)
-        except FileNotFoundError:
-            print(f"Error: File not found: {file_path}", file=sys.stderr)
-            sys.exit(1)
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON: {e}", file=sys.stderr)
-            sys.exit(1)
+def generate_comparison_csv(
+    engine1_name: str,
+    engine2_name: str,
+    stats1: Dict,
+    stats2: Dict,
+    query_mapping: Dict,
+    output_file: Path
+):
+    """Generate detailed CSV comparison."""
+
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+
+        # Header
+        header = [
+            'Query',
+            f'{engine1_name}_Avg(s)',
+            f'{engine1_name}_Median(s)',
+            f'{engine1_name}_p90(s)',
+            f'{engine1_name}_p95(s)',
+            f'{engine1_name}_p99(s)',
+            f'{engine1_name}_Min(s)',
+            f'{engine1_name}_Max(s)',
+            f'{engine2_name}_Avg(s)',
+            f'{engine2_name}_Median(s)',
+            f'{engine2_name}_p90(s)',
+            f'{engine2_name}_p95(s)',
+            f'{engine2_name}_p99(s)',
+            f'{engine2_name}_Min(s)',
+            f'{engine2_name}_Max(s)',
+            'Diff_Avg(%)',
+            'Diff_Median(%)',
+            'Diff_p90(%)',
+            'Diff_p95(%)',
+            'Diff_p99(%)',
+            'Diff_Min(%)',
+            'Diff_Max(%)',
+        ]
+        writer.writerow(header)
+
+        # Query data
+        for query_name in sorted(query_mapping.keys()):
+            q1_name, q2_name = query_mapping[query_name]
+
+            m1 = extract_query_metrics(stats1, q1_name)
+            m2 = extract_query_metrics(stats2, q2_name)
+
+            if not m1 or not m2:
+                continue
+
+            row = [query_name]
+
+            # Engine 1 metrics
+            row.extend([
+                f"{m1['avg']:.2f}",
+                f"{m1['median']:.2f}",
+                f"{m1['p90']:.2f}",
+                f"{m1['p95']:.2f}",
+                f"{m1['p99']:.2f}",
+                f"{m1['min']:.2f}",
+                f"{m1['max']:.2f}",
+            ])
+
+            # Engine 2 metrics
+            row.extend([
+                f"{m2['avg']:.2f}",
+                f"{m2['median']:.2f}",
+                f"{m2['p90']:.2f}",
+                f"{m2['p95']:.2f}",
+                f"{m2['p99']:.2f}",
+                f"{m2['min']:.2f}",
+                f"{m2['max']:.2f}",
+            ])
+
+            # Differences (positive = engine1 faster)
+            for metric in ['avg', 'median', 'p90', 'p95', 'p99', 'min', 'max']:
+                diff = calculate_percentage_diff(m1[metric], m2[metric])
+                row.append(f"{diff:.1f}")
+
+            writer.writerow(row)
+
+        # Summary statistics
+        writer.writerow([])
+        writer.writerow(['SUMMARY STATISTICS'])
+
+        for stat_label in ['Average', 'Median', 'p90', 'p95', 'p99']:
+            metric_key = stat_label.lower()
+
+            # Collect values
+            vals1 = []
+            vals2 = []
+            for query_name in query_mapping.keys():
+                q1_name, q2_name = query_mapping[query_name]
+                m1 = extract_query_metrics(stats1, q1_name)
+                m2 = extract_query_metrics(stats2, q2_name)
+                if m1 and m2:
+                    vals1.append(m1[metric_key])
+                    vals2.append(m2[metric_key])
+
+            if vals1 and vals2:
+                avg1 = sum(vals1) / len(vals1)
+                avg2 = sum(vals2) / len(vals2)
+                diff = calculate_percentage_diff(avg1, avg2)
+
+                writer.writerow([
+                    stat_label,
+                    f"{avg1:.2f}",
+                    '', '', '', '', '',  # Placeholders
+                    f"{avg2:.2f}",
+                    '', '', '', '', '',  # Placeholders
+                    f"{diff:.1f}",
+                    '', '', '', '', '', ''  # Placeholders
+                ])
 
 
-def calculate_percentage_change(old_value: float, new_value: float) -> float:
-    """Calculate percentage change between two values."""
-    if old_value == 0:
-        return 0 if new_value == 0 else 100
-    return ((new_value - old_value) / old_value) * 100
+def generate_executive_summary(
+    path1: JMeterS3Path,
+    path2: JMeterS3Path,
+    stats1: Dict,
+    stats2: Dict,
+    query_mapping: Dict,
+    output_file: Path
+):
+    """Generate executive summary in markdown format."""
 
+    # Calculate summary metrics
+    metrics_summary = {}
+    for metric in ['avg', 'median', 'p90', 'p95', 'p99', 'min', 'max']:
+        vals1 = []
+        vals2 = []
+        for query_name in query_mapping.keys():
+            q1_name, q2_name = query_mapping[query_name]
+            m1 = extract_query_metrics(stats1, q1_name)
+            m2 = extract_query_metrics(stats2, q2_name)
+            if m1 and m2:
+                vals1.append(m1[metric])
+                vals2.append(m2[metric])
 
-def format_percentage(value: float, inverse: bool = False) -> str:
-    """Format percentage with color indicators.
-
-    Args:
-        value: Percentage change
-        inverse: If True, negative is good (like for latency reduction)
-    """
-    if value == 0:
-        return "  0.00% (no change)"
-
-    symbol = "↓" if value < 0 else "↑"
-    color_indicator = ""
-
-    if inverse:
-        # For metrics where lower is better (latency, errors)
-        if value < 0:
-            color_indicator = "✅"  # Improvement
-        elif value > 0:
-            color_indicator = "⚠️"   # Degradation
-    else:
-        # For metrics where higher is better (throughput)
-        if value > 0:
-            color_indicator = "✅"  # Improvement
-        elif value < 0:
-            color_indicator = "⚠️"   # Degradation
-
-    return f"{symbol} {abs(value):6.2f}% {color_indicator}"
-
-
-def compare_configurations(run1: Dict, run2: Dict) -> List[str]:
-    """Compare test execution configurations."""
-    differences = []
-
-    # Compare test execution config
-    config1 = run1.get('test_execution_config', {})
-    config2 = run2.get('test_execution_config', {})
-
-    config_fields = [
-        ('test_plan_file', 'Test Plan'),
-        ('concurrent_threads', 'Concurrent Threads'),
-        ('ramp_up_time_min', 'Ramp Up Time (min)'),
-        ('hold_period_min', 'Hold Period (min)'),
-        ('recycle_on_eof', 'Recycle on EOF'),
-        ('random_order', 'Random Order'),
-        ('query_timeout_sec', 'Query Timeout (sec)'),
-        ('qpm', 'QPM'),
-        ('qps', 'QPS'),
-    ]
-
-    for field, label in config_fields:
-        val1 = config1.get(field, 'N/A')
-        val2 = config2.get(field, 'N/A')
-        if val1 != val2:
-            differences.append(f"  {label}: {val1} → {val2}")
-
-    # Compare cluster config
-    cluster1 = run1.get('cluster_config', {})
-    cluster2 = run2.get('cluster_config', {})
-
-    if cluster1 != cluster2:
-        differences.append(f"  Cluster Config: Different")
-
-    return differences
-
-
-def compare_query_performance(run1: Dict, run2: Dict) -> Tuple[List[Dict], List[Dict], List[str]]:
-    """Compare individual query performance.
-
-    Returns:
-        (improved_queries, degraded_queries, missing_queries)
-    """
-    queries1 = {q['query']: q['avg_time_sec'] for q in run1.get('all_queries_avg_time', [])}
-    queries2 = {q['query']: q['avg_time_sec'] for q in run2.get('all_queries_avg_time', [])}
-
-    improved = []
-    degraded = []
-    missing = []
-
-    for query_name, time1 in queries1.items():
-        if query_name not in queries2:
-            missing.append(f"  {query_name}: Only in Run 1")
-            continue
-
-        time2 = queries2[query_name]
-        change = calculate_percentage_change(time1, time2)
-
-        query_comparison = {
-            'query': query_name,
-            'run1_time': time1,
-            'run2_time': time2,
-            'change_pct': change,
-            'change_sec': time2 - time1
-        }
-
-        if change < -5:  # Improved by more than 5%
-            improved.append(query_comparison)
-        elif change > 5:  # Degraded by more than 5%
-            degraded.append(query_comparison)
-
-    # Check for queries only in run2
-    for query_name in queries2:
-        if query_name not in queries1:
-            missing.append(f"  {query_name}: Only in Run 2")
-
-    # Sort by absolute change
-    improved.sort(key=lambda x: x['change_pct'])
-    degraded.sort(key=lambda x: x['change_pct'], reverse=True)
-
-    return improved, degraded, missing
-
-
-def generate_text_comparison(run1: Dict, run2: Dict) -> str:
-    """Generate text format comparison report."""
-    output = []
-
-    output.append("=" * 100)
-    output.append("JMETER TEST RUN COMPARISON")
-    output.append("=" * 100)
-    output.append("")
-
-    # Run identification
-    output.append("RUN IDENTIFICATION")
-    output.append("-" * 100)
-    output.append(f"Run 1: {run1.get('run_id', 'unknown')} ({run1.get('engine', 'unknown')} on {run1.get('cloud', 'unknown')})")
-    output.append(f"       Cluster: {run1.get('cluster_hostname', 'unknown')}")
-    output.append(f"       Started: {run1.get('start_time', 'unknown')}")
-    output.append("")
-    output.append(f"Run 2: {run2.get('run_id', 'unknown')} ({run2.get('engine', 'unknown')} on {run2.get('cloud', 'unknown')})")
-    output.append(f"       Cluster: {run2.get('cluster_hostname', 'unknown')}")
-    output.append(f"       Started: {run2.get('start_time', 'unknown')}")
-    output.append("")
-
-    # Configuration differences
-    config_diffs = compare_configurations(run1, run2)
-    output.append("CONFIGURATION DIFFERENCES")
-    output.append("-" * 100)
-    if config_diffs:
-        output.extend(config_diffs)
-    else:
-        output.append("  No configuration differences detected")
-    output.append("")
-
-    # Performance summary comparison
-    output.append("PERFORMANCE SUMMARY")
-    output.append("-" * 100)
-    output.append(f"{'Metric':<30} {'Run 1':>15} {'Run 2':>15} {'Change':>20}")
-    output.append("-" * 100)
-
-    metrics = [
-        ('Total Queries', 'total_queries', False),
-        ('Successful', 'total_success', False),
-        ('Failed', 'total_failed', True),
-        ('Error Rate %', 'error_percent', True),
-        ('Total Duration (sec)', 'total_time_taken_sec', True),
-        ('Avg Response (sec)', 'avg_time_sec', True),
-        ('Median (p50) (sec)', 'p50_latency_sec', True),
-        ('p90 Latency (sec)', 'p90_latency_sec', True),
-        ('p95 Latency (sec)', 'p95_latency_sec', True),
-        ('p99 Latency (sec)', 'p99_latency_sec', True),
-        ('Min Response (sec)', 'min_time_sec', True),
-        ('Max Response (sec)', 'max_time_sec', True),
-        ('Throughput (q/s)', 'throughput', False),
-    ]
-
-    for label, key, inverse in metrics:
-        val1 = run1.get(key, 0)
-        val2 = run2.get(key, 0)
-
-        if isinstance(val1, (int, float)) and isinstance(val2, (int, float)):
-            change_pct = calculate_percentage_change(val1, val2)
-            change_str = format_percentage(change_pct, inverse)
-            output.append(f"{label:<30} {val1:>15.2f} {val2:>15.2f} {change_str:>20}")
-        else:
-            output.append(f"{label:<30} {str(val1):>15} {str(val2):>15} {'N/A':>20}")
-
-    output.append("")
-
-    # Query-level comparison
-    improved, degraded, missing = compare_query_performance(run1, run2)
-
-    output.append("TOP 10 IMPROVED QUERIES")
-    output.append("-" * 100)
-    if improved:
-        output.append(f"{'Query':<50} {'Run 1 (s)':>12} {'Run 2 (s)':>12} {'Change':>20}")
-        output.append("-" * 100)
-        for q in improved[:10]:
-            change_str = format_percentage(q['change_pct'], inverse=True)
-            output.append(f"{q['query']:<50} {q['run1_time']:>12.2f} {q['run2_time']:>12.2f} {change_str:>20}")
-    else:
-        output.append("  No significantly improved queries (threshold: 5% improvement)")
-    output.append("")
-
-    output.append("TOP 10 DEGRADED QUERIES")
-    output.append("-" * 100)
-    if degraded:
-        output.append(f"{'Query':<50} {'Run 1 (s)':>12} {'Run 2 (s)':>12} {'Change':>20}")
-        output.append("-" * 100)
-        for q in degraded[:10]:
-            change_str = format_percentage(q['change_pct'], inverse=True)
-            output.append(f"{q['query']:<50} {q['run1_time']:>12.2f} {q['run2_time']:>12.2f} {change_str:>20}")
-    else:
-        output.append("  No significantly degraded queries (threshold: 5% degradation)")
-    output.append("")
-
-    if missing:
-        output.append("MISSING QUERIES")
-        output.append("-" * 100)
-        output.extend(missing)
-        output.append("")
-
-    # Summary verdict
-    output.append("SUMMARY VERDICT")
-    output.append("-" * 100)
-
-    avg_change = calculate_percentage_change(
-        run1.get('avg_time_sec', 0),
-        run2.get('avg_time_sec', 0)
-    )
-
-    if avg_change < -10:
-        verdict = "✅ SIGNIFICANT IMPROVEMENT"
-        details = f"Run 2 is {abs(avg_change):.1f}% faster than Run 1"
-    elif avg_change < -5:
-        verdict = "✅ MODERATE IMPROVEMENT"
-        details = f"Run 2 is {abs(avg_change):.1f}% faster than Run 1"
-    elif avg_change > 10:
-        verdict = "⚠️  SIGNIFICANT DEGRADATION"
-        details = f"Run 2 is {avg_change:.1f}% slower than Run 1"
-    elif avg_change > 5:
-        verdict = "⚠️  MODERATE DEGRADATION"
-        details = f"Run 2 is {avg_change:.1f}% slower than Run 1"
-    else:
-        verdict = "➖ SIMILAR PERFORMANCE"
-        details = f"Performance difference is within 5% (actual: {avg_change:.1f}%)"
-
-    output.append(f"  {verdict}")
-    output.append(f"  {details}")
-    output.append("")
-    output.append(f"  Improved queries: {len(improved)}")
-    output.append(f"  Degraded queries: {len(degraded)}")
-    output.append(f"  Similar queries: {run1.get('total_queries', 0) - len(improved) - len(degraded)}")
-    output.append("")
-
-    output.append("=" * 100)
-
-    return "\n".join(output)
-
-
-def generate_json_comparison(run1: Dict, run2: Dict) -> str:
-    """Generate JSON format comparison report."""
-    improved, degraded, missing = compare_query_performance(run1, run2)
-
-    comparison = {
-        'run1': {
-            'run_id': run1.get('run_id'),
-            'engine': run1.get('engine'),
-            'cloud': run1.get('cloud'),
-            'cluster': run1.get('cluster_hostname'),
-            'start_time': run1.get('start_time'),
-        },
-        'run2': {
-            'run_id': run2.get('run_id'),
-            'engine': run2.get('engine'),
-            'cloud': run2.get('cloud'),
-            'cluster': run2.get('cluster_hostname'),
-            'start_time': run2.get('start_time'),
-        },
-        'config_differences': compare_configurations(run1, run2),
-        'performance_comparison': {
-            'total_queries': {
-                'run1': run1.get('total_queries'),
-                'run2': run2.get('total_queries'),
-                'change_pct': calculate_percentage_change(run1.get('total_queries', 0), run2.get('total_queries', 0))
-            },
-            'avg_response_time_sec': {
-                'run1': run1.get('avg_time_sec'),
-                'run2': run2.get('avg_time_sec'),
-                'change_pct': calculate_percentage_change(run1.get('avg_time_sec', 0), run2.get('avg_time_sec', 0))
-            },
-            'p50_latency_sec': {
-                'run1': run1.get('p50_latency_sec'),
-                'run2': run2.get('p50_latency_sec'),
-                'change_pct': calculate_percentage_change(run1.get('p50_latency_sec', 0), run2.get('p50_latency_sec', 0))
-            },
-            'p95_latency_sec': {
-                'run1': run1.get('p95_latency_sec'),
-                'run2': run2.get('p95_latency_sec'),
-                'change_pct': calculate_percentage_change(run1.get('p95_latency_sec', 0), run2.get('p95_latency_sec', 0))
-            },
-            'p99_latency_sec': {
-                'run1': run1.get('p99_latency_sec'),
-                'run2': run2.get('p99_latency_sec'),
-                'change_pct': calculate_percentage_change(run1.get('p99_latency_sec', 0), run2.get('p99_latency_sec', 0))
-            },
-            'throughput': {
-                'run1': run1.get('throughput'),
-                'run2': run2.get('throughput'),
-                'change_pct': calculate_percentage_change(run1.get('throughput', 0), run2.get('throughput', 0))
-            },
-            'error_percent': {
-                'run1': run1.get('error_percent'),
-                'run2': run2.get('error_percent'),
-                'change_pct': calculate_percentage_change(run1.get('error_percent', 0), run2.get('error_percent', 0))
+        if vals1 and vals2:
+            metrics_summary[metric] = {
+                'engine1': sum(vals1) / len(vals1),
+                'engine2': sum(vals2) / len(vals2),
+                'diff_pct': calculate_percentage_diff(
+                    sum(vals1) / len(vals1),
+                    sum(vals2) / len(vals2)
+                )
             }
-        },
-        'query_analysis': {
-            'improved_queries': improved[:10],
-            'degraded_queries': degraded[:10],
-            'missing_queries': missing,
-            'total_improved': len(improved),
-            'total_degraded': len(degraded),
-            'total_missing': len(missing)
-        }
-    }
 
-    return json.dumps(comparison, indent=2)
+    # Write markdown
+    with open(output_file, 'w') as f:
+        f.write(f"# JMeter Performance Comparison\n\n")
+        f.write(f"**Generated**: {get_timestamp()}\n\n")
 
+        # Configuration comparison
+        f.write(f"## Configuration\n\n")
+        f.write(f"| Aspect | {path1.engine.upper()} | {path2.engine.upper()} |\n")
+        f.write(f"|--------|---------|----------|\n")
+        f.write(f"| **Cluster Size** | {path1.cluster_size} | {path2.cluster_size} |\n")
+        f.write(f"| **Total Cores** | {path1.get_cores()} | {path2.get_cores()} |\n")
+        f.write(f"| **Benchmark** | {path1.benchmark} | {path2.benchmark} |\n")
+        f.write(f"| **Concurrency** | {path1.concurrency} | {path2.concurrency} |\n")
+        f.write(f"| **Run Type** | {path1.run_type} | {path2.run_type} |\n\n")
 
-def generate_markdown_comparison(run1: Dict, run2: Dict) -> str:
-    """Generate Markdown format comparison report."""
-    output = []
+        # Performance summary
+        f.write(f"## Performance Summary\n\n")
+        f.write(f"| Metric | {path1.engine.upper()} | {path2.engine.upper()} | Difference |\n")
+        f.write(f"|--------|---------|-----------|------------|\n")
 
-    output.append("# JMeter Test Run Comparison Report")
-    output.append("")
+        for metric_label, metric_key in [
+            ('Average', 'avg'),
+            ('Median (p50)', 'median'),
+            ('p90', 'p90'),
+            ('p95', 'p95'),
+            ('p99', 'p99'),
+            ('Min', 'min'),
+            ('Max', 'max'),
+        ]:
+            if metric_key in metrics_summary:
+                m = metrics_summary[metric_key]
+                winner_icon = "✅" if m['diff_pct'] > 0 else "⚠️"
+                winner = path1.engine.upper() if m['diff_pct'] > 0 else path2.engine.upper()
+                f.write(
+                    f"| **{metric_label}** | {m['engine1']:.2f} sec | {m['engine2']:.2f} sec | "
+                    f"{winner_icon} **{winner} {format_percentage(abs(m['diff_pct']))} faster** |\n"
+                )
 
-    # Run identification
-    output.append("## Run Identification")
-    output.append("")
-    output.append("| Aspect | Run 1 | Run 2 |")
-    output.append("|--------|-------|-------|")
-    output.append(f"| Run ID | {run1.get('run_id', 'unknown')} | {run2.get('run_id', 'unknown')} |")
-    output.append(f"| Engine | {run1.get('engine', 'unknown')} | {run2.get('engine', 'unknown')} |")
-    output.append(f"| Cloud | {run1.get('cloud', 'unknown')} | {run2.get('cloud', 'unknown')} |")
-    output.append(f"| Cluster | {run1.get('cluster_hostname', 'unknown')} | {run2.get('cluster_hostname', 'unknown')} |")
-    output.append(f"| Started | {run1.get('start_time', 'unknown')} | {run2.get('start_time', 'unknown')} |")
-    output.append("")
+        f.write(f"\n")
 
-    # Configuration differences
-    config_diffs = compare_configurations(run1, run2)
-    output.append("## Configuration Differences")
-    output.append("")
-    if config_diffs:
-        for diff in config_diffs:
-            output.append(f"- {diff.strip()}")
-    else:
-        output.append("*No configuration differences detected*")
-    output.append("")
+        # Key findings
+        f.write(f"## Key Findings\n\n")
 
-    # Performance comparison
-    output.append("## Performance Summary")
-    output.append("")
-    output.append("| Metric | Run 1 | Run 2 | Change |")
-    output.append("|--------|-------|-------|--------|")
+        avg_diff = metrics_summary.get('avg', {}).get('diff_pct', 0)
+        p99_diff = metrics_summary.get('p99', {}).get('diff_pct', 0)
 
-    metrics = [
-        ('Total Queries', 'total_queries', False),
-        ('Error Rate %', 'error_percent', True),
-        ('Avg Response (sec)', 'avg_time_sec', True),
-        ('Median (p50) (sec)', 'p50_latency_sec', True),
-        ('p95 Latency (sec)', 'p95_latency_sec', True),
-        ('p99 Latency (sec)', 'p99_latency_sec', True),
-        ('Throughput (q/s)', 'throughput', False),
-    ]
+        faster_engine = path1.engine.upper() if avg_diff > 0 else path2.engine.upper()
+        slower_engine = path2.engine.upper() if avg_diff > 0 else path1.engine.upper()
 
-    for label, key, inverse in metrics:
-        val1 = run1.get(key, 0)
-        val2 = run2.get(key, 0)
-        change_pct = calculate_percentage_change(val1, val2)
-        change_str = format_percentage(change_pct, inverse)
-        output.append(f"| {label} | {val1:.2f} | {val2:.2f} | {change_str} |")
+        f.write(f"### Overall Winner: {faster_engine}\n\n")
+        f.write(f"- **Average latency**: {abs(avg_diff):.1f}% faster than {slower_engine}\n")
+        f.write(f"- **p99 tail latency**: {abs(p99_diff):.1f}% better than {slower_engine}\n")
+        f.write(f"- **Total queries analyzed**: {len(query_mapping)}\n\n")
 
-    output.append("")
+        # Recommendations
+        f.write(f"## Recommendations\n\n")
+        if avg_diff > 10:
+            f.write(f"✅ **{faster_engine}** is significantly faster ({abs(avg_diff):.1f}%) and recommended for production use.\n\n")
+        elif avg_diff < -10:
+            f.write(f"⚠️ **{slower_engine}** is significantly slower ({abs(avg_diff):.1f}%) - consider using {faster_engine}.\n\n")
+        else:
+            f.write(f"📊 Performance is comparable between both engines (< 10% difference).\n\n")
 
-    # Query comparisons
-    improved, degraded, missing = compare_query_performance(run1, run2)
-
-    output.append("## Top 10 Improved Queries")
-    output.append("")
-    if improved:
-        output.append("| Query | Run 1 (s) | Run 2 (s) | Change |")
-        output.append("|-------|-----------|-----------|--------|")
-        for q in improved[:10]:
-            change_str = format_percentage(q['change_pct'], inverse=True)
-            output.append(f"| {q['query']} | {q['run1_time']:.2f} | {q['run2_time']:.2f} | {change_str} |")
-    else:
-        output.append("*No significantly improved queries*")
-    output.append("")
-
-    output.append("## Top 10 Degraded Queries")
-    output.append("")
-    if degraded:
-        output.append("| Query | Run 1 (s) | Run 2 (s) | Change |")
-        output.append("|-------|-----------|-----------|--------|")
-        for q in degraded[:10]:
-            change_str = format_percentage(q['change_pct'], inverse=True)
-            output.append(f"| {q['query']} | {q['run1_time']:.2f} | {q['run2_time']:.2f} | {change_str} |")
-    else:
-        output.append("*No significantly degraded queries*")
-    output.append("")
-
-    # Summary verdict
-    avg_change = calculate_percentage_change(
-        run1.get('avg_time_sec', 0),
-        run2.get('avg_time_sec', 0)
-    )
-
-    output.append("## Summary Verdict")
-    output.append("")
-    if avg_change < -10:
-        output.append("✅ **SIGNIFICANT IMPROVEMENT**")
-    elif avg_change < -5:
-        output.append("✅ **MODERATE IMPROVEMENT**")
-    elif avg_change > 10:
-        output.append("⚠️ **SIGNIFICANT DEGRADATION**")
-    elif avg_change > 5:
-        output.append("⚠️ **MODERATE DEGRADATION**")
-    else:
-        output.append("➖ **SIMILAR PERFORMANCE**")
-
-    output.append("")
-    output.append(f"- Performance change: {avg_change:+.1f}%")
-    output.append(f"- Improved queries: {len(improved)}")
-    output.append(f"- Degraded queries: {len(degraded)}")
-    output.append(f"- Similar queries: {run1.get('total_queries', 0) - len(improved) - len(degraded)}")
-    output.append("")
-
-    return "\n".join(output)
+        # S3 paths
+        f.write(f"## Source Data\n\n")
+        f.write(f"- **{path1.engine.upper()}**: `{path1.raw_path}`\n")
+        f.write(f"- **{path2.engine.upper()}**: `{path2.raw_path}`\n")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Compare two JMeter test runs',
+        description='Compare two JMeter runs from S3',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__
     )
-    parser.add_argument('run1', help='Path to first test_result.json (local or s3://)')
-    parser.add_argument('run2', help='Path to second test_result.json (local or s3://)')
-    parser.add_argument(
-        '--format',
-        choices=['text', 'json', 'markdown'],
-        default='text',
-        help='Output format (default: text)'
-    )
+    parser.add_argument('s3_path_1', help='First S3 path (e.g., e6data run)')
+    parser.add_argument('s3_path_2', help='Second S3 path (e.g., databricks run)')
+    parser.add_argument('--output-dir', default='reports', help='Output directory for reports')
 
     args = parser.parse_args()
 
-    # Load both runs
-    print(f"Loading Run 1: {args.run1}", file=sys.stderr)
-    run1 = load_json_file(args.run1)
+    # Parse S3 paths
+    try:
+        path1 = JMeterS3Path(args.s3_path_1)
+        path2 = JMeterS3Path(args.s3_path_2)
+    except ValueError as e:
+        print(f"Error parsing S3 paths: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    print(f"Loading Run 2: {args.run2}", file=sys.stderr)
-    run2 = load_json_file(args.run2)
+    print(f"Comparing:")
+    print(f"  Path 1: {path1}")
+    print(f"  Path 2: {path2}")
 
-    print(f"Generating comparison...", file=sys.stderr)
+    # Create output directory
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Generate comparison in requested format
-    if args.format == 'json':
-        output = generate_json_comparison(run1, run2)
-    elif args.format == 'markdown':
-        output = generate_markdown_comparison(run1, run2)
-    else:  # text
-        output = generate_text_comparison(run1, run2)
+    # Create temp directory for downloads
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
 
-    print(output)
+        # Download statistics files
+        print(f"\nDownloading statistics from S3...")
+        stats_file1 = download_jmeter_statistics(args.s3_path_1, tmpdir_path / 'run1')
+        stats_file2 = download_jmeter_statistics(args.s3_path_2, tmpdir_path / 'run2')
+
+        if not stats_file1:
+            print(f"Error: Could not find statistics.json in {args.s3_path_1}", file=sys.stderr)
+            sys.exit(1)
+
+        if not stats_file2:
+            print(f"Error: Could not find statistics.json in {args.s3_path_2}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"  ✓ Downloaded: {stats_file1.name}")
+        print(f"  ✓ Downloaded: {stats_file2.name}")
+
+        # Load statistics
+        print(f"\nLoading statistics...")
+        stats1 = load_jmeter_statistics(stats_file1)
+        stats2 = load_jmeter_statistics(stats_file2)
+
+        # Create query mapping
+        query_mapping = create_query_mapping(stats1, stats2, path1.engine, path2.engine)
+        print(f"  ✓ Found {len(query_mapping)} matching queries")
+
+        # Generate reports
+        timestamp = get_timestamp()
+        engine1_short = path1.engine[:3].upper()
+        engine2_short = path2.engine[:3].upper()
+        cluster1 = path1.cluster_size.replace('-', '')
+        cluster2 = path2.cluster_size.replace('-', '')
+        run_type = path1.run_type.replace('_', '')
+
+        base_name = f"{engine1_short}_{cluster1}_vs_{engine2_short}_{cluster2}_{run_type}_{timestamp}"
+
+        # CSV report
+        csv_file = output_dir / f"{base_name}.csv"
+        print(f"\nGenerating CSV report...")
+        generate_comparison_csv(
+            f"{path1.engine}_{path1.cluster_size}",
+            f"{path2.engine}_{path2.cluster_size}",
+            stats1,
+            stats2,
+            query_mapping,
+            csv_file
+        )
+        print(f"  ✓ Created: {csv_file}")
+
+        # Executive summary
+        md_file = output_dir / f"{base_name}_SUMMARY.md"
+        print(f"\nGenerating executive summary...")
+        generate_executive_summary(
+            path1,
+            path2,
+            stats1,
+            stats2,
+            query_mapping,
+            md_file
+        )
+        print(f"  ✓ Created: {md_file}")
+
+    print(f"\n✅ Comparison complete!")
+    print(f"\nGenerated files:")
+    print(f"  - CSV: {csv_file}")
+    print(f"  - Summary: {md_file}")
 
 
 if __name__ == '__main__':
