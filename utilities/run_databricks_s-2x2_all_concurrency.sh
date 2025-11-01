@@ -9,6 +9,8 @@ set -e
 ENGINE="databricks"
 CLUSTER_SIZE="S-2x2"
 CONCURRENCY_LEVELS=(2 4 8 12 16)
+S3_BASE_PATH="s3://e6-jmeter/jmeter-results"
+BENCHMARK="tpcds_29_1tb"
 
 # Colors
 GREEN='\033[0;32m'
@@ -83,8 +85,10 @@ echo ""
 echo "Logs saved in: $LOG_DIR"
 echo ""
 echo "Next steps:"
-echo "  1. Check S3 for uploaded results:"
-echo "     s3://e6-jmeter/jmeter-results/engine=databricks/cluster_size=S-2x2/benchmark=tpcds_29_1tb/"
-echo "  2. Compare with e6data M-4x4 results:"
-echo "     s3://e6-jmeter/jmeter-results/engine=e6data/cluster_size=M-4x4/benchmark=tpcds_29_1tb/"
+echo "  1. Check S3 for uploaded results (each test in run_id= folder):"
+echo "     ${S3_BASE_PATH}/engine=${ENGINE}/cluster_size=${CLUSTER_SIZE}/benchmark=${BENCHMARK}/run_type=concurrency_X/run_id=YYYYMMDD-HHMMSS/"
+echo "  2. Compare consecutive runs:"
+echo "     python utilities/compare_consecutive_runs_from_s3.py ${S3_BASE_PATH}/engine=${ENGINE}/cluster_size=${CLUSTER_SIZE}/benchmark=${BENCHMARK}/"
+echo "  3. Compare with e6data M-4x4:"
+echo "     ${S3_BASE_PATH}/engine=e6data/cluster_size=M-4x4/benchmark=${BENCHMARK}/"
 echo ""
