@@ -799,9 +799,12 @@ if [[ "$BENCHMARK_TYPE" == *"unknown"* ]] || [[ "$RUN_TYPE" == "unknown" ]]; the
 fi
 
 # Set S3_UPLOAD_PATH for JSON (will be "None" if S3 upload is disabled)
-# 4-Level partition structure: engine/cluster_size/benchmark/run_type
+# 5-Level partition structure: engine/cluster_size/benchmark/run_type/run_id
 if [[ "$COPY_TO_S3" == "true" ]]; then
-    S3_UPLOAD_PATH="s3://e6-jmeter/jmeter-results/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
+    # Use S3_BASE_PATH from metadata file (fallback to default if not set)
+    S3_BASE_PATH="${S3_BASE_PATH:-s3://e6-jmeter/jmeter-results}"
+
+    S3_UPLOAD_PATH="${S3_BASE_PATH}/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
 
     # Display S3 path summary for user verification
     echo ""
@@ -812,10 +815,12 @@ if [[ "$COPY_TO_S3" == "true" ]]; then
     echo "  $S3_UPLOAD_PATH"
     echo ""
     echo "S3 Path Components (used for partitioning):"
+    echo "  • base_path: $S3_BASE_PATH"
     echo "  • engine: $ENGINE"
     echo "  • cluster_size: $CLUSTER_SIZE"
     echo "  • benchmark: $BENCHMARK_TYPE"
     echo "  • run_type: $RUN_TYPE"
+    echo "  • run_id: $RUN_ID"
     echo "================================================"
     echo ""
 else
@@ -1114,12 +1119,13 @@ fi
 echo "$JSON_SUMMARY" > "$TEST_RESULT_FILE"
 
 
-# Define S3 path with 4-level partitioning: engine/cluster_size/benchmark/run_type
-S3_PATH_WITH_PARTITIONS="s3://e6-jmeter/jmeter-results/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
+# Define S3 path with 5-level partitioning: engine/cluster_size/benchmark/run_type/run_id
+# Use S3_BASE_PATH from metadata file (fallback to default if not set)
+S3_BASE_PATH="${S3_BASE_PATH:-s3://e6-jmeter/jmeter-results}"
+S3_PATH_WITH_PARTITIONS="${S3_BASE_PATH}/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
 
-#Rename the statistics.json file with the run_ID
-mv ${STATISTICS_FILE} ${STATISTICS_FILE}_${RUN_ID}
-STATISTICS_FILE="${STATISTICS_FILE}_${RUN_ID}"
+# Note: Files no longer need run_id suffix in their names since they're organized in run_id folders
+# The statistics.json file keeps its original name
 
 
 
@@ -1133,6 +1139,7 @@ if [[ "$COPY_TO_S3" == "true" ]]; then
     echo "  - cluster_size: $CLUSTER_SIZE"
     echo "  - benchmark: $BENCHMARK_TYPE"
     echo "  - run_type: $RUN_TYPE"
+    echo "  - run_id: $RUN_ID"
     echo "==========================================="
 
     FILES_TO_COPY=("$JMETER_RESULT_FILE" "$AGGREGATE_REPORT" "$SUMMARY_REPORT" "$TEST_RESULT_FILE" "$STATISTICS_FILE")
@@ -1154,11 +1161,13 @@ if [[ "$COPY_TO_S3" == "true" ]]; then
     if [[ $S3_ERROR -eq 0 ]]; then
         echo "✅ All files copied to S3 successfully!"
 
-        # Update latest.json reference by copying current test result
+        # Update latest.json reference at run_type level (parent of run_id)
+        # This allows finding the latest run without knowing the run_id
+        S3_PARENT_PATH="${S3_BASE_PATH}/engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
         echo ""
         echo "Updating latest.json reference..."
-        if aws s3 cp "$TEST_RESULT_FILE" "$S3_PATH_WITH_PARTITIONS/latest.json"; then
-            echo "✅ Updated latest.json at $S3_PATH_WITH_PARTITIONS/latest.json"
+        if aws s3 cp "$TEST_RESULT_FILE" "$S3_PARENT_PATH/latest.json"; then
+            echo "✅ Updated latest.json at $S3_PARENT_PATH/latest.json"
         else
             echo "⚠️ Could not update latest.json"
         fi
@@ -1166,24 +1175,28 @@ if [[ "$COPY_TO_S3" == "true" ]]; then
         echo "❌ Some files failed to copy to S3. Please check logs."
     fi
 
-# After S3 copy succeeds, add Athena partitions (4-level partitioning)
+# After S3 copy succeeds, add Athena partitions (5-level partitioning)
 if [[ $S3_ERROR -eq 0 ]]; then
     echo ""
     echo "Adding Athena partitions..."
-    echo "  engine='$ENGINE', cluster_size='$CLUSTER_SIZE', benchmark='$BENCHMARK_TYPE', run_type='$RUN_TYPE'"
+    echo "  engine='$ENGINE', cluster_size='$CLUSTER_SIZE', benchmark='$BENCHMARK_TYPE', run_type='$RUN_TYPE', run_id='$RUN_ID'"
+
+    # Extract bucket and path from S3_BASE_PATH for Athena
+    S3_BUCKET=$(echo "$S3_BASE_PATH" | sed 's|s3://\([^/]*\)/.*|\1|')
+    S3_BASE_PREFIX=$(echo "$S3_BASE_PATH" | sed 's|s3://[^/]*/||')
 
     # Define all tables needing partitions
     declare -A TABLE_PATHS=(
-        ["detailed_results"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
-        ["aggregate_report"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
-        ["run_summary"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
-        ["statistics"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE"
+        ["detailed_results"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
+        ["aggregate_report"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
+        ["run_summary"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
+        ["statistics"]="engine=$ENGINE/cluster_size=$CLUSTER_SIZE/benchmark=$BENCHMARK_TYPE/run_type=$RUN_TYPE/run_id=$RUN_ID"
     )
 
     for table in "${!TABLE_PATHS[@]}"; do
         echo "  Adding partition for $table..."
         aws athena start-query-execution \
-            --query-string "ALTER TABLE jmeter_performance_db.$table ADD IF NOT EXISTS PARTITION (engine='$ENGINE', cluster_size='$CLUSTER_SIZE', benchmark='$BENCHMARK_TYPE', run_type='$RUN_TYPE') LOCATION 's3://e6-jmeter/jmeter-results/${TABLE_PATHS[$table]}/'" \
+            --query-string "ALTER TABLE jmeter_performance_db.$table ADD IF NOT EXISTS PARTITION (engine='$ENGINE', cluster_size='$CLUSTER_SIZE', benchmark='$BENCHMARK_TYPE', run_type='$RUN_TYPE', run_id='$RUN_ID') LOCATION 's3://${S3_BUCKET}/${S3_BASE_PREFIX}/${TABLE_PATHS[$table]}/'" \
             --query-execution-context Database=jmeter_performance_db \
             --result-configuration OutputLocation=s3://e6-jmeter/athena-query-results/ &
     done
@@ -1195,7 +1208,7 @@ echo "==========================================="
 echo "Test and Upload Process Complete!"
 echo "==========================================="
 echo "S3 Location: $S3_PATH_WITH_PARTITIONS"
-echo "Latest Run:  $S3_PATH_WITH_PARTITIONS/latest.json"
+echo "Latest Ref:  $S3_PARENT_PATH/latest.json"
 echo "Local File:  $TEST_RESULT_FILE"
 echo "==========================================="
 fi

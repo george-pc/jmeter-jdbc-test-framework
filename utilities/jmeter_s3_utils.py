@@ -190,6 +190,34 @@ def load_jmeter_statistics(stats_file: Path) -> Dict:
         return json.load(f)
 
 
+def load_statistics_from_s3(s3_file_path: str) -> Optional[Dict]:
+    """
+    Load statistics.json directly from S3 without downloading to disk.
+
+    Args:
+        s3_file_path: Full S3 path to statistics file (e.g., s3://bucket/path/to/statistics_*.json)
+                      or just the path component (bucket/path/to/statistics_*.json)
+
+    Returns:
+        Dictionary with statistics data, or None if error
+    """
+    # Ensure s3:// prefix
+    if not s3_file_path.startswith('s3://'):
+        s3_file_path = 's3://' + s3_file_path
+
+    cmd = ['aws', 's3', 'cp', s3_file_path, '-']
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return json.loads(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(f"Error loading {s3_file_path}: {e.stderr}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON from {s3_file_path}: {e}")
+        return None
+
+
 def extract_query_metrics(stats: Dict, query_name: str) -> Optional[Dict]:
     """
     Extract metrics for a specific query from statistics.json.
