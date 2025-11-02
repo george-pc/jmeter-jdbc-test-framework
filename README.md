@@ -156,20 +156,30 @@ Run all concurrency levels (2, 4, 8, 12, 16) for a specific cluster size:
 **Features:**
 - Runs all concurrency levels sequentially
 - Validates test input files before starting
-- Logs each test to `/tmp/jmeter_test_logs/`
+- Logs each test to `/tmp/jmeter_test_logs/` with instance_type and query_file in name
 - 30-second pause between tests
 - Automatic S3 upload (if enabled in metadata)
 
 ### Databricks Concurrency Tests
-Run all concurrency levels for Databricks clusters:
+Run all concurrency levels (2, 4, 8, 12, 16) for a specific cluster size:
 
 ```bash
-# Run S-2x2 (60 cores) concurrency tests
-./utilities/run_databricks_s-2x2_all_concurrency.sh
+# Run S-2x2 (~60 cores) concurrency tests
+./utilities/run_databricks_all_concurrency.sh S-2x2
 
-# Run S-4x4 (120 cores) concurrency tests
-./utilities/run_databricks_s-4x4_all_concurrency.sh
+# Run S-4x4 (~120 cores) concurrency tests
+./utilities/run_databricks_all_concurrency.sh S-4x4
+
+# Run with custom benchmark
+./utilities/run_databricks_all_concurrency.sh S-4x4 tpcds_51_1tb
 ```
+
+**Features:**
+- Runs all concurrency levels sequentially
+- Validates test input files before starting
+- Logs each test to `/tmp/jmeter_test_logs/` with instance_type and query_file in name
+- 30-second pause between tests
+- Automatic S3 upload (if enabled in metadata)
 
 ## File Structure
 
