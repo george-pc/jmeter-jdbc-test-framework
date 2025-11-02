@@ -7,7 +7,7 @@
 #   ./run_e6data_all_concurrency.sh S-2x2
 #   ./run_e6data_all_concurrency.sh M-4x4 tpcds_51_1tb
 #
-# Concurrency levels: 2, 4, 8, 12, 16
+# Concurrency levels: 1, 2, 4, 8, 12, 16
 
 set -e
 
@@ -32,7 +32,7 @@ fi
 ENGINE="e6data"
 CLUSTER_SIZE="$1"
 BENCHMARK="${2:-tpcds_29_1tb}"
-CONCURRENCY_LEVELS=(2 4 8 12 16)
+CONCURRENCY_LEVELS=(1 2 4 8 12 16)
 S3_BASE_PATH="s3://e6-jmeter/jmeter-results"
 
 # Cluster size descriptions

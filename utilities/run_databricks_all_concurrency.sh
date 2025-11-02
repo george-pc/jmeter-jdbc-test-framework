@@ -32,7 +32,7 @@ fi
 ENGINE="databricks"
 CLUSTER_SIZE="$1"
 BENCHMARK="${2:-tpcds_29_1tb}"
-CONCURRENCY_LEVELS=(2 4 8 12 16)
+CONCURRENCY_LEVELS=(1 2 4 8 12 16)
 S3_BASE_PATH="s3://e6-jmeter/jmeter-results"
 
 # Cluster size descriptions
