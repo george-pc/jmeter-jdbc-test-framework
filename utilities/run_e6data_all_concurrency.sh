@@ -106,7 +106,6 @@ mkdir -p "$LOG_DIR"
 # Run all concurrency tests
 for concurrency in "${CONCURRENCY_LEVELS[@]}"; do
     TEST_INPUT="test_inputs/e6data_${CLUSTER_SIZE_NORMALIZED}_tpcds29_concurrency_${concurrency}.txt"
-    LOG_FILE="$LOG_DIR/${ENGINE}_${CLUSTER_SIZE_NORMALIZED}_concurrency${concurrency}_$(date +%Y%m%d_%H%M%S).log"
 
     # Skip if test input file doesn't exist
     if [ ! -f "$TEST_INPUT" ]; then
@@ -116,6 +115,23 @@ for concurrency in "${CONCURRENCY_LEVELS[@]}"; do
         echo -e "==========================================${NC}"
         continue
     fi
+
+    # Extract metadata file path (line 1 of test input)
+    METADATA_FILE=$(sed -n '1p' "$TEST_INPUT")
+    METADATA_PATH="metadata_files/$METADATA_FILE"
+
+    # Extract instance_type from metadata file
+    INSTANCE_TYPE="unknown"
+    if [ -f "$METADATA_PATH" ]; then
+        INSTANCE_TYPE=$(grep -o '"instance_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$METADATA_PATH" | cut -d'"' -f4)
+    fi
+
+    # Extract query file name (line 5 of test input)
+    QUERY_FILE=$(sed -n '5p' "$TEST_INPUT")
+    QUERY_BASENAME=$(basename "$QUERY_FILE" .csv)
+
+    # Create log file name with instance_type and query_file
+    LOG_FILE="$LOG_DIR/${ENGINE}_${CLUSTER_SIZE_NORMALIZED}_${INSTANCE_TYPE}_${QUERY_BASENAME}_concurrency${concurrency}_$(date +%Y%m%d_%H%M%S).log"
 
     echo ""
     echo -e "${BLUE}=========================================="
