@@ -130,9 +130,45 @@ $JMETER_BIN/jmeter -n -t "$TEST_PLAN" -l "$REPORT_PATH/results.jtl" -q "$TEST_PR
 
 
 # Running Tests interactively using the wrapper script
+
+## Interactive Mode
 Execute the interactive test runner:
 ```bash
 ./run_jmeter_tests_interactive.sh
+```
+
+## Automated Batch Testing
+
+### E6Data Concurrency Tests
+Run all concurrency levels (2, 4, 8, 12, 16) for a specific cluster size:
+
+```bash
+# Run S-2x2 (60 cores) concurrency tests
+./utilities/run_e6data_all_concurrency.sh S-2x2
+
+# Run M-4x4 (120 cores) concurrency tests
+./utilities/run_e6data_all_concurrency.sh M-4x4
+
+# Run with custom benchmark
+./utilities/run_e6data_all_concurrency.sh M-4x4 tpcds_51_1tb
+```
+
+**Features:**
+- Runs all concurrency levels sequentially
+- Validates test input files before starting
+- Logs each test to `/tmp/jmeter_test_logs/`
+- 30-second pause between tests
+- Automatic S3 upload (if enabled in metadata)
+
+### Databricks Concurrency Tests
+Run all concurrency levels for Databricks clusters:
+
+```bash
+# Run S-2x2 (60 cores) concurrency tests
+./utilities/run_databricks_s-2x2_all_concurrency.sh
+
+# Run S-4x4 (120 cores) concurrency tests
+./utilities/run_databricks_s-4x4_all_concurrency.sh
 ```
 
 ## File Structure
